@@ -1,0 +1,58 @@
+// Package response contains structures for API response payloads.
+package response
+
+import (
+	"time"
+
+	"{{.ModuleName}}/internal/entity"
+)
+
+// {{.SampleAPIName}}Response represents a {{.SampleAPINameLower}} in API responses
+type {{.SampleAPIName}}Response struct {
+	ID          int64                        `json:"id"`
+	Name        string                       `json:"name"`
+	Description string                       `json:"description"`
+	Status      entity.{{.SampleAPIName}}Status `json:"status"`
+	CreatedAt   time.Time                    `json:"created_at"`
+	UpdatedAt   time.Time                    `json:"updated_at"`
+	IsActive    bool                         `json:"is_active"`
+}
+
+// {{.SampleAPIName}}DetailResponse represents detailed {{.SampleAPINameLower}} information
+type {{.SampleAPIName}}DetailResponse struct {
+	{{.SampleAPIName}}Response
+}
+
+// Create{{.SampleAPIName}}Response represents the response for {{.SampleAPINameLower}} creation
+type Create{{.SampleAPIName}}Response struct {
+	ID      int64  `json:"id"`
+	Message string `json:"message"`
+}
+
+// Update{{.SampleAPIName}}Response represents the response for {{.SampleAPINameLower}} updates
+type Update{{.SampleAPIName}}Response struct {
+	ID      int64  `json:"id"`
+	Message string `json:"message"`
+	Updated bool   `json:"updated"`
+}
+
+// {{.SampleAPIName}}ListResponse represents a paginated list of {{.SampleAPINameLower}}s
+type {{.SampleAPIName}}ListResponse struct {
+	{{.SampleAPIName}}s []{{.SampleAPIName}}Response `json:"{{.SampleAPINameLower}}s"`
+	Pagination         PaginationMetadata           `json:"pagination"`
+}
+
+// Bulk{{.SampleAPIName}}Response represents the response for bulk {{.SampleAPINameLower}} operations
+type Bulk{{.SampleAPIName}}Response struct {
+	UpdatedCount int     `json:"updated_count"`
+	FailedIDs    []int64 `json:"failed_ids,omitempty"`
+	Message      string  `json:"message"`
+}
+
+// {{.SampleAPIName}}StatsResponse represents {{.SampleAPINameLower}} statistics
+type {{.SampleAPIName}}StatsResponse struct {
+	TotalCount    int64 `json:"total_count"`
+	ActiveCount   int64 `json:"active_count"`
+	InactiveCount int64 `json:"inactive_count"`
+	ArchivedCount int64 `json:"archived_count"`
+}

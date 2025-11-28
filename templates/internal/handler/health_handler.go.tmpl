@@ -1,0 +1,88 @@
+package handler
+
+import (
+	"time"
+
+	"github.com/gofiber/fiber/v2"
+	"{{.ModuleName}}/internal/dto/response"
+)
+
+// DatabaseService defines the interface for database health checks
+type DatabaseService interface {
+	Ping() error
+}
+
+// HealthHandler handles health check requests
+type HealthHandler struct {
+	dbService DatabaseService
+	version   string
+}
+
+// NewHealthHandler creates a new health handler
+func NewHealthHandler(dbService DatabaseService, version string) *HealthHandler {
+	return &HealthHandler{
+		dbService: dbService,
+		version:   version,
+	}
+}
+
+// HealthCheck handles GET /health
+func (h *HealthHandler) HealthCheck(c *fiber.Ctx) error {
+	healthResp := response.HealthResponse{
+		Status:    "healthy",
+		Timestamp: time.Now(),
+		Version:   h.version,
+		Services:  make(map[string]response.ServiceHealth),
+	}
+
+	// Check database health
+	if h.dbService != nil {
+		if err := h.dbService.Ping(); err != nil {
+			healthResp.Services["database"] = response.ServiceHealth{
+				Status:  "unhealthy",
+				Message: "Database connection failed: " + err.Error(),
+			}
+			healthResp.Status = "degraded"
+		} else {
+			healthResp.Services["database"] = response.ServiceHealth{
+				Status:  "healthy",
+				Message: "Connected",
+			}
+		}
+	}
+
+	// Determine overall status
+	statusCode := fiber.StatusOK
+	if healthResp.Status == "degraded" {
+		statusCode = fiber.StatusServiceUnavailable
+	}
+
+	return c.Status(statusCode).JSON(healthResp)
+}
+
+// ReadinessCheck handles GET /ready
+func (h *HealthHandler) ReadinessCheck(c *fiber.Ctx) error {
+	// Check if essential services are ready
+	if h.dbService != nil {
+		if err := h.dbService.Ping(); err != nil {
+			return c.Status(fiber.StatusServiceUnavailable).JSON(response.ErrorResponse{
+				Error:   "service_unavailable",
+				Message: "Service not ready: database unavailable",
+			})
+		}
+	}
+
+	return c.JSON(fiber.Map{
+		"status": "ready",
+		"time":   time.Now().Unix(),
+	})
+}
+
+// LivenessCheck handles GET /live
+func (h *HealthHandler) LivenessCheck(c *fiber.Ctx) error {
+	// Basic liveness check - just return that the service is alive
+	return c.JSON(fiber.Map{
+		"status": "alive",
+		"time":   time.Now().Unix(),
+	})
+}

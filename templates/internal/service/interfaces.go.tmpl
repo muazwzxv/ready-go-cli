@@ -1,0 +1,22 @@
+package service
+
+import (
+	"{{.ModuleName}}/internal/dto/request"
+	"{{.ModuleName}}/internal/dto/response"
+)
+
+// {{.SampleAPIName}}Service defines the business logic interface for {{.SampleAPINameLower}} operations
+type {{.SampleAPIName}}Service interface {
+	// CRUD operations
+	Create{{.SampleAPIName}}(req request.Create{{.SampleAPIName}}Request) (*response.{{.SampleAPIName}}Response, error)
+	Get{{.SampleAPIName}}(id int64) (*response.{{.SampleAPIName}}Response, error)
+	List{{.SampleAPIName}}s(req request.List{{.SampleAPIName}}sRequest) (*response.{{.SampleAPIName}}ListResponse, error)
+	Update{{.SampleAPIName}}(id int64, req request.Update{{.SampleAPIName}}Request) (*response.{{.SampleAPIName}}Response, error)
+	Delete{{.SampleAPIName}}(id int64) error
+
+	// Status management
+	BulkUpdateStatus(req request.Bulk{{.SampleAPIName}}Request) (*response.Bulk{{.SampleAPIName}}Response, error)
+
+	// Statistics
+	Get{{.SampleAPIName}}Stats() (*response.{{.SampleAPIName}}StatsResponse, error)
+}

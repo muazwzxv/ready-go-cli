@@ -1,0 +1,20 @@
+package main
+
+import (
+	"log"
+
+	app "{{.ModuleName}}/internal"
+)
+
+func main() {
+	// Initialize application (will use multi-config loading)
+	appCtx, err := app.Init()
+	if err != nil {
+		log.Fatalf("Failed to initialize application: %v", err)
+	}
+
+	// Start server
+	if err := appCtx.Start(); err != nil {
+		log.Fatalf("Server error: %v", err)
+	}
+}

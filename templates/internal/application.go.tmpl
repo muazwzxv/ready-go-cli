@@ -1,0 +1,189 @@
+// Package app provides application initialization and lifecycle management.
+package app
+
+import (
+	"context"
+	"fmt"
+	"log"
+	"os"
+	"os/signal"
+	"syscall"
+
+	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v2/middleware/logger"
+	"github.com/gofiber/fiber/v2/middleware/recover"
+	"{{.ModuleName}}/internal/config"
+	"{{.ModuleName}}/internal/database"
+	"{{.ModuleName}}/internal/handler"
+	"{{.ModuleName}}/internal/repository"
+	"{{.ModuleName}}/internal/service"
+)
+
+// ApplicationContext holds all application dependencies
+type ApplicationContext struct {
+	app                *fiber.App
+	db                 *database.Database
+	config             *config.Config
+	{{.SampleAPINameLower}}Repo    repository.{{.SampleAPIName}}Repository
+	{{.SampleAPINameLower}}Service service.{{.SampleAPIName}}Service
+	{{.SampleAPINameLower}}Handler *handler.{{.SampleAPIName}}Handler
+	healthHandler      *handler.HealthHandler
+}
+
+// NewApplicationContext creates a new ApplicationContext with the given configuration
+func NewApplicationContext(cfg *config.Config) (*ApplicationContext, error) {
+	ctx := context.Background()
+
+	// Initialize database
+	dbCfg := &database.DBConfig{
+		Host:            cfg.Database.Host,
+		Port:            cfg.Database.Port,
+		User:            cfg.Database.User,
+		Password:        cfg.Database.Password,
+		Database:        cfg.Database.Database,
+		MaxOpenConns:    cfg.Database.MaxOpenConns,
+		MaxIdleConns:    cfg.Database.MaxIdleConns,
+		ConnMaxLifetime: cfg.Database.ConnMaxLifetime,
+		RetryAttempts:   cfg.Database.RetryAttempts,
+		RetryBackoff:    cfg.Database.RetryBackoff,
+	}
+
+	db, err := database.NewDatabase(ctx, dbCfg)
+	if err != nil {
+		return nil, fmt.Errorf("initialize database: %w", err)
+	}
+
+	// Create Fiber app
+	app := fiber.New(fiber.Config{
+		ReadTimeout:  cfg.Server.ReadTimeout,
+		WriteTimeout: cfg.Server.WriteTimeout,
+		BodyLimit:    cfg.Server.BodyLimit,
+		Prefork:      cfg.Server.Prefork,
+	})
+
+	// Setup middleware
+	app.Use(logger.New())
+	app.Use(recover.New())
+
+	// Initialize repository
+	{{.SampleAPINameLower}}Repo := repository.NewMySQL{{.SampleAPIName}}Repository(db.DB)
+
+	// Initialize service
+	{{.SampleAPINameLower}}Service := service.New{{.SampleAPIName}}Service({{.SampleAPINameLower}}Repo)
+
+	// Initialize handlers
+	{{.SampleAPINameLower}}Handler := handler.New{{.SampleAPIName}}Handler({{.SampleAPINameLower}}Service)
+	healthHandler := handler.NewHealthHandler(db, "1.0.0")
+
+	appCtx := &ApplicationContext{
+		app:                app,
+		db:                 db,
+		config:             cfg,
+		{{.SampleAPINameLower}}Repo:    {{.SampleAPINameLower}}Repo,
+		{{.SampleAPINameLower}}Service: {{.SampleAPINameLower}}Service,
+		{{.SampleAPINameLower}}Handler: {{.SampleAPINameLower}}Handler,
+		healthHandler:      healthHandler,
+	}
+
+	// Register handlers
+	if err := appCtx.RegisterHandlers(); err != nil {
+		db.Close()
+		return nil, fmt.Errorf("register handlers: %w", err)
+	}
+
+	log.Println("application: initialized successfully")
+
+	return appCtx, nil
+}
+
+// Start starts the Fiber server with graceful shutdown
+func (a *ApplicationContext) Start() error {
+	addr := fmt.Sprintf("%s:%d", a.config.Server.Host, a.config.Server.Port)
+	log.Printf("application: starting server on %s", addr)
+
+	// Start server in a goroutine
+	errChan := make(chan error, 1)
+	go func() {
+		if err := a.app.Listen(addr); err != nil {
+			errChan <- err
+		}
+	}()
+
+	// Wait for interrupt signal
+	sigChan := make(chan os.Signal, 1)
+	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
+
+	select {
+	case err := <-errChan:
+		return fmt.Errorf("server error: %w", err)
+	case sig := <-sigChan:
+		log.Printf("application: received signal %v, shutting down gracefully", sig)
+	}
+
+	// Graceful shutdown
+	if err := a.app.Shutdown(); err != nil {
+		log.Printf("application: error during server shutdown: %v", err)
+	}
+
+	if err := a.db.Close(); err != nil {
+		log.Printf("application: error closing database: %v", err)
+	}
+
+	log.Println("application: shutdown complete")
+	return nil
+}
+
+// RegisterHandlers registers all HTTP routes
+func (a *ApplicationContext) RegisterHandlers() error {
+	// Apply middleware
+	a.app.Use(handler.RequestLoggerMiddleware())
+	a.app.Use(handler.ErrorHandlerMiddleware())
+	a.app.Use(handler.CORSMiddleware())
+
+	// Health check endpoints
+	a.app.Get("/health", a.healthHandler.HealthCheck)
+	a.app.Get("/health/ready", a.healthHandler.ReadinessCheck)
+
+	// API v1 routes
+	v1 := a.app.Group("/api/v1")
+
+	// Apply content type middleware to API routes
+	v1.Use(handler.ContentTypeMiddleware())
+
+	// {{.SampleAPIName}} routes
+	{{.SampleAPINameLower}}s := v1.Group("/{{.SampleTableName}}")
+	{{.SampleAPINameLower}}s.Post("/", a.{{.SampleAPINameLower}}Handler.Create{{.SampleAPIName}})
+	{{.SampleAPINameLower}}s.Get("/", a.{{.SampleAPINameLower}}Handler.List{{.SampleAPIName}}s)
+	{{.SampleAPINameLower}}s.Get("/:id", a.{{.SampleAPINameLower}}Handler.Get{{.SampleAPIName}})
+	{{.SampleAPINameLower}}s.Put("/:id", a.{{.SampleAPINameLower}}Handler.Update{{.SampleAPIName}})
+	{{.SampleAPINameLower}}s.Delete("/:id", a.{{.SampleAPINameLower}}Handler.Delete{{.SampleAPIName}})
+
+	return nil
+}
+
+// Init initializes the application using multi-source configuration loading
+func Init() (*ApplicationContext, error) {
+	log.Println("application: loading configuration from multiple sources")
+
+	cfg, err := config.LoadConfig()
+	if err != nil {
+		return nil, fmt.Errorf("load config: %w", err)
+	}
+
+	log.Printf("application: config loaded - server: %s:%d, database: %s:%d",
+		cfg.Server.Host, cfg.Server.Port, cfg.Database.Host, cfg.Database.Port)
+
+	return NewApplicationContext(cfg)
+}
+
+// InitFromFile initializes the application from a config file path (backward compatibility)
+func InitFromFile(configPath string) (*ApplicationContext, error) {
+	log.Printf("application: loading configuration from %s", configPath)
+
+	cfg, err := config.Load(configPath)
+	if err != nil {
+		return nil, fmt.Errorf("load config: %w", err)
+	}
+
+	return NewApplicationContext(cfg)
+}
