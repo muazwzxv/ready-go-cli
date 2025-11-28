@@ -7,18 +7,15 @@ import (
 	"{{.ModuleName}}/internal/dto/response"
 )
 
-// DatabaseService defines the interface for database health checks
 type DatabaseService interface {
 	Ping() error
 }
 
-// HealthHandler handles health check requests
 type HealthHandler struct {
 	dbService DatabaseService
 	version   string
 }
 
-// NewHealthHandler creates a new health handler
 func NewHealthHandler(dbService DatabaseService, version string) *HealthHandler {
 	return &HealthHandler{
 		dbService: dbService,
@@ -26,7 +23,11 @@ func NewHealthHandler(dbService DatabaseService, version string) *HealthHandler 
 	}
 }
 
-// HealthCheck handles GET /health
+func (h *HealthHandler) RegisterRoutes(app *fiber.App) {
+	app.Get("/health", h.HealthCheck)
+	app.Get("/health/ready", h.ReadinessCheck)
+}
+
 func (h *HealthHandler) HealthCheck(c *fiber.Ctx) error {
 	healthResp := response.HealthResponse{
 		Status:    "healthy",
@@ -35,7 +36,6 @@ func (h *HealthHandler) HealthCheck(c *fiber.Ctx) error {
 		Services:  make(map[string]response.ServiceHealth),
 	}
 
-	// Check database health
 	if h.dbService != nil {
 		if err := h.dbService.Ping(); err != nil {
 			healthResp.Services["database"] = response.ServiceHealth{
@@ -51,7 +51,6 @@ func (h *HealthHandler) HealthCheck(c *fiber.Ctx) error {
 		}
 	}
 
-	// Determine overall status
 	statusCode := fiber.StatusOK
 	if healthResp.Status == "degraded" {
 		statusCode = fiber.StatusServiceUnavailable
@@ -60,9 +59,7 @@ func (h *HealthHandler) HealthCheck(c *fiber.Ctx) error {
 	return c.Status(statusCode).JSON(healthResp)
 }
 
-// ReadinessCheck handles GET /ready
 func (h *HealthHandler) ReadinessCheck(c *fiber.Ctx) error {
-	// Check if essential services are ready
 	if h.dbService != nil {
 		if err := h.dbService.Ping(); err != nil {
 			return c.Status(fiber.StatusServiceUnavailable).JSON(response.ErrorResponse{
@@ -78,9 +75,7 @@ func (h *HealthHandler) ReadinessCheck(c *fiber.Ctx) error {
 	})
 }
 
-// LivenessCheck handles GET /live
 func (h *HealthHandler) LivenessCheck(c *fiber.Ctx) error {
-	// Basic liveness check - just return that the service is alive
 	return c.JSON(fiber.Map{
 		"status": "alive",
 		"time":   time.Now().Unix(),

@@ -1,0 +1,51 @@
+package service
+
+import (
+	"fmt"
+
+	"{{.ModuleName}}/internal/dto/request"
+	"{{.ModuleName}}/internal/dto/response"
+	"{{.ModuleName}}/internal/entity"
+	"{{.ModuleName}}/internal/repository"
+)
+
+type {{.SampleAPIName}}ServiceImpl struct {
+	repo repository.{{.SampleAPIName}}Repository
+}
+
+func New{{.SampleAPIName}}Service(repo repository.{{.SampleAPIName}}Repository) {{.SampleAPIName}}Service {
+	return &{{.SampleAPIName}}ServiceImpl{
+		repo: repo,
+	}
+}
+
+func (s *{{.SampleAPIName}}ServiceImpl) Create{{.SampleAPIName}}(req request.Create{{.SampleAPIName}}Request) (*response.{{.SampleAPIName}}Response, error) {
+	status := entity.{{.SampleAPIName}}StatusActive
+	if req.Status != "" {
+		status = entity.{{.SampleAPIName}}Status(req.Status)
+	}
+
+	item := &entity.{{.SampleAPIName}}{
+		Name:        req.Name,
+		Description: req.Description,
+		Status:      status,
+	}
+
+	if err := s.repo.Create(item); err != nil {
+		return nil, fmt.Errorf("failed to create {{.SampleAPINameLower}}: %w", err)
+	}
+
+	return s.entityToResponse(item), nil
+}
+
+func (s *{{.SampleAPIName}}ServiceImpl) entityToResponse(item *entity.{{.SampleAPIName}}) *response.{{.SampleAPIName}}Response {
+	return &response.{{.SampleAPIName}}Response{
+		ID:          item.ID,
+		Name:        item.Name,
+		Description: item.Description,
+		Status:      item.Status,
+		CreatedAt:   item.CreatedAt,
+		UpdatedAt:   item.UpdatedAt,
+		IsActive:    item.IsActive(),
+	}
+}

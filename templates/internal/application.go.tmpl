@@ -1,4 +1,3 @@
-// Package app provides application initialization and lifecycle management.
 package app
 
 import (
@@ -15,26 +14,34 @@ import (
 	"{{.ModuleName}}/internal/config"
 	"{{.ModuleName}}/internal/database"
 	"{{.ModuleName}}/internal/handler"
+	healthHandler "{{.ModuleName}}/internal/handler/health"
+	{{.SampleAPINameLower}}Handler "{{.ModuleName}}/internal/handler/{{.SampleAPINameLower}}"
 	"{{.ModuleName}}/internal/repository"
-	"{{.ModuleName}}/internal/service"
+	service "{{.ModuleName}}/internal/service/{{.SampleAPINameLower}}"
 )
 
-// ApplicationContext holds all application dependencies
 type ApplicationContext struct {
-	app                *fiber.App
-	db                 *database.Database
-	config             *config.Config
-	{{.SampleAPINameLower}}Repo    repository.{{.SampleAPIName}}Repository
-	{{.SampleAPINameLower}}Service service.{{.SampleAPIName}}Service
-	{{.SampleAPINameLower}}Handler *handler.{{.SampleAPIName}}Handler
-	healthHandler      *handler.HealthHandler
+	app      *fiber.App
+	db       *database.Database
+	config   *config.Config
+	{{.SampleAPINameLower}}Repo repository.{{.SampleAPIName}}Repository
+	Services *Services
+	Handlers *Handlers
+}
+
+type Services struct {
+	{{.SampleAPIName}}Service service.{{.SampleAPIName}}Service
+}
+
+type Handlers struct {
+	{{.SampleAPIName}}Handler   *{{.SampleAPINameLower}}Handler.{{.SampleAPIName}}Handler
+	HealthHandler *healthHandler.HealthHandler
 }
 
 // NewApplicationContext creates a new ApplicationContext with the given configuration
 func NewApplicationContext(cfg *config.Config) (*ApplicationContext, error) {
 	ctx := context.Background()
 
-	// Initialize database
 	dbCfg := &database.DBConfig{
 		Host:            cfg.Database.Host,
 		Port:            cfg.Database.Port,
@@ -53,7 +60,6 @@ func NewApplicationContext(cfg *config.Config) (*ApplicationContext, error) {
 		return nil, fmt.Errorf("initialize database: %w", err)
 	}
 
-	// Create Fiber app
 	app := fiber.New(fiber.Config{
 		ReadTimeout:  cfg.Server.ReadTimeout,
 		WriteTimeout: cfg.Server.WriteTimeout,
@@ -61,35 +67,31 @@ func NewApplicationContext(cfg *config.Config) (*ApplicationContext, error) {
 		Prefork:      cfg.Server.Prefork,
 	})
 
-	// Setup middleware
 	app.Use(logger.New())
 	app.Use(recover.New())
 
-	// Initialize repository
 	{{.SampleAPINameLower}}Repo := repository.NewMySQL{{.SampleAPIName}}Repository(db.DB)
 
-	// Initialize service
 	{{.SampleAPINameLower}}Service := service.New{{.SampleAPIName}}Service({{.SampleAPINameLower}}Repo)
 
-	// Initialize handlers
-	{{.SampleAPINameLower}}Handler := handler.New{{.SampleAPIName}}Handler({{.SampleAPINameLower}}Service)
-	healthHandler := handler.NewHealthHandler(db, "1.0.0")
+	{{.SampleAPINameLower}}Handler := {{.SampleAPINameLower}}Handler.New{{.SampleAPIName}}Handler({{.SampleAPINameLower}}Service)
+	healthHandler := healthHandler.NewHealthHandler(db, "1.0.0")
 
 	appCtx := &ApplicationContext{
-		app:                app,
-		db:                 db,
-		config:             cfg,
-		{{.SampleAPINameLower}}Repo:    {{.SampleAPINameLower}}Repo,
-		{{.SampleAPINameLower}}Service: {{.SampleAPINameLower}}Service,
-		{{.SampleAPINameLower}}Handler: {{.SampleAPINameLower}}Handler,
-		healthHandler:      healthHandler,
+		app:      app,
+		db:       db,
+		config:   cfg,
+		{{.SampleAPINameLower}}Repo: {{.SampleAPINameLower}}Repo,
+		Handlers: &Handlers{
+			{{.SampleAPIName}}Handler:   {{.SampleAPINameLower}}Handler,
+			HealthHandler: healthHandler,
+		},
+		Services: &Services{
+			{{.SampleAPIName}}Service: {{.SampleAPINameLower}}Service,
+		},
 	}
 
-	// Register handlers
-	if err := appCtx.RegisterHandlers(); err != nil {
-		db.Close()
-		return nil, fmt.Errorf("register handlers: %w", err)
-	}
+	appCtx.RegisterHandlers()
 
 	log.Println("application: initialized successfully")
 
@@ -101,7 +103,6 @@ func (a *ApplicationContext) Start() error {
 	addr := fmt.Sprintf("%s:%d", a.config.Server.Host, a.config.Server.Port)
 	log.Printf("application: starting server on %s", addr)
 
-	// Start server in a goroutine
 	errChan := make(chan error, 1)
 	go func() {
 		if err := a.app.Listen(addr); err != nil {
@@ -109,7 +110,6 @@ func (a *ApplicationContext) Start() error {
 		}
 	}()
 
-	// Wait for interrupt signal
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
 
@@ -120,7 +120,6 @@ func (a *ApplicationContext) Start() error {
 		log.Printf("application: received signal %v, shutting down gracefully", sig)
 	}
 
-	// Graceful shutdown
 	if err := a.app.Shutdown(); err != nil {
 		log.Printf("application: error during server shutdown: %v", err)
 	}
@@ -133,38 +132,18 @@ func (a *ApplicationContext) Start() error {
 	return nil
 }
 
-// RegisterHandlers registers all HTTP routes
-func (a *ApplicationContext) RegisterHandlers() error {
-	// Apply middleware
+func (a *ApplicationContext) RegisterHandlers() {
 	a.app.Use(handler.RequestLoggerMiddleware())
 	a.app.Use(handler.ErrorHandlerMiddleware())
 	a.app.Use(handler.CORSMiddleware())
 
-	// Health check endpoints
-	a.app.Get("/health", a.healthHandler.HealthCheck)
-	a.app.Get("/health/ready", a.healthHandler.ReadinessCheck)
-
-	// API v1 routes
-	v1 := a.app.Group("/api/v1")
-
-	// Apply content type middleware to API routes
-	v1.Use(handler.ContentTypeMiddleware())
-
-	// {{.SampleAPIName}} routes
-	{{.SampleAPINameLower}}s := v1.Group("/{{.SampleTableName}}")
-	{{.SampleAPINameLower}}s.Post("/", a.{{.SampleAPINameLower}}Handler.Create{{.SampleAPIName}})
-	{{.SampleAPINameLower}}s.Get("/", a.{{.SampleAPINameLower}}Handler.List{{.SampleAPIName}}s)
-	{{.SampleAPINameLower}}s.Get("/:id", a.{{.SampleAPINameLower}}Handler.Get{{.SampleAPIName}})
-	{{.SampleAPINameLower}}s.Put("/:id", a.{{.SampleAPINameLower}}Handler.Update{{.SampleAPIName}})
-	{{.SampleAPINameLower}}s.Delete("/:id", a.{{.SampleAPINameLower}}Handler.Delete{{.SampleAPIName}})
-
-	return nil
+	handlers := a.Handlers
+	handlers.HealthHandler.RegisterRoutes(a.app)
+	handlers.{{.SampleAPIName}}Handler.RegisterRoutes(a.app)
 }
 
 // Init initializes the application using multi-source configuration loading
 func Init() (*ApplicationContext, error) {
-	log.Println("application: loading configuration from multiple sources")
-
 	cfg, err := config.LoadConfig()
 	if err != nil {
 		return nil, fmt.Errorf("load config: %w", err)
@@ -178,8 +157,6 @@ func Init() (*ApplicationContext, error) {
 
 // InitFromFile initializes the application from a config file path (backward compatibility)
 func InitFromFile(configPath string) (*ApplicationContext, error) {
-	log.Printf("application: loading configuration from %s", configPath)
-
 	cfg, err := config.Load(configPath)
 	if err != nil {
 		return nil, fmt.Errorf("load config: %w", err)

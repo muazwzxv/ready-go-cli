@@ -77,8 +77,9 @@ func (g *ProjectGenerator) createDirectoryStructure(projectPath string) error {
 		filepath.Join(projectPath, "internal", "dto", "request"),
 		filepath.Join(projectPath, "internal", "dto", "response"),
 		filepath.Join(projectPath, "internal", "repository"),
-		filepath.Join(projectPath, "internal", "service"),
-		filepath.Join(projectPath, "internal", "handler"),
+		filepath.Join(projectPath, "internal", "service", g.config.SampleAPINameLower),
+		filepath.Join(projectPath, "internal", "handler", "health"),
+		filepath.Join(projectPath, "internal", "handler", g.config.SampleAPINameLower),
 	}
 
 	for _, dir := range dirs {
@@ -130,13 +131,14 @@ func (g *ProjectGenerator) generateFiles(projectPath string) error {
 		{"internal/repository/sample_repository.go.tmpl", filepath.Join(projectPath, "internal", "repository", g.config.SampleAPINameLower+"_repository.go")},
 
 		// Service
-		{"internal/service/interfaces.go.tmpl", filepath.Join(projectPath, "internal", "service", "interfaces.go")},
-		{"internal/service/sample_service.go.tmpl", filepath.Join(projectPath, "internal", "service", g.config.SampleAPINameLower+"_service.go")},
+		{"internal/service/sample/sample.go.tmpl", filepath.Join(projectPath, "internal", "service", g.config.SampleAPINameLower, g.config.SampleAPINameLower+".go")},
+		{"internal/service/sample/create_sample_service.go.tmpl", filepath.Join(projectPath, "internal", "service", g.config.SampleAPINameLower, "create_"+g.config.SampleAPINameLower+"_service.go")},
 
 		// Handler
-		{"internal/handler/health_handler.go.tmpl", filepath.Join(projectPath, "internal", "handler", "health_handler.go")},
+		{"internal/handler/health/health_handler.go.tmpl", filepath.Join(projectPath, "internal", "handler", "health", "health_handler.go")},
 		{"internal/handler/middleware.go.tmpl", filepath.Join(projectPath, "internal", "handler", "middleware.go")},
-		{"internal/handler/sample_handler.go.tmpl", filepath.Join(projectPath, "internal", "handler", g.config.SampleAPINameLower+"_handler.go")},
+		{"internal/handler/sample/sample_handler.go.tmpl", filepath.Join(projectPath, "internal", "handler", g.config.SampleAPINameLower, g.config.SampleAPINameLower+"_handler.go")},
+		{"internal/handler/sample/create_sample_handler.go.tmpl", filepath.Join(projectPath, "internal", "handler", g.config.SampleAPINameLower, "create_"+g.config.SampleAPINameLower+"_handler.go")},
 	}
 
 	for _, file := range files {
