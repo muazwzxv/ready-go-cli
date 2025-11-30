@@ -9,6 +9,7 @@ A CLI tool to scaffold production-ready Go projects with clean architecture, com
 - 🔌 **Self-Registering Routes**: Handlers register their own routes for better encapsulation
 - 🐳 **Docker Ready**: Pre-configured Docker Compose with MySQL, Redis, and Kafka
 - 🔄 **Database Migrations**: Built-in migration support with goose
+- 🔍 **Type-Safe SQL**: Integrated sqlc for compile-time SQL query validation
 - ⚙️ **Simple Config**: Viper-based configuration with environment variable override
 - 🚀 **Ready to Run**: Generated projects compile and run immediately
 - 🎨 **Customizable**: Configurable entity names, module paths, and services
@@ -132,6 +133,9 @@ my-project/
 │   │   └── config.go           # Viper-based config loader
 │   ├── database/
 │   │   ├── database.go         # MySQL connection
+│   │   ├── sqlc.yaml           # sqlc configuration
+│   │   ├── query/              # SQL queries for sqlc
+│   │   ├── store/              # Generated sqlc code
 │   │   └── migrations/         # SQL migrations
 │   ├── entity/                 # Domain models
 │   │   └── {entity}.go
@@ -212,6 +216,9 @@ make up              # Start all Docker services
 make down            # Stop all Docker services
 make migrate-up      # Run database migrations
 make migrate-down    # Rollback database migrations
+make migrate-status  # Check migration status
+make migrate-create  # Create new migration (use NAME=migration_name)
+make sqlc-generate   # Generate Go code from SQL queries
 make run             # Run the application
 make build           # Build the binary
 make test            # Run tests
@@ -272,17 +279,52 @@ conn_max_lifetime = "5m"
 
 The configuration file is optional. If not present, the application will use environment variables only.
 
-### Database Migrations
+### Database Operations
+
+#### Migrations
 
 ```bash
 # Create a new migration
-goose -dir internal/database/migrations create my_migration sql
+make migrate-create NAME=my_migration
 
 # Run migrations
 make migrate-up
 
 # Rollback last migration
 make migrate-down
+
+# Check migration status
+make migrate-status
+```
+
+#### sqlc - Type-Safe SQL
+
+The generated project includes sqlc for type-safe database queries. SQL queries are written in the `internal/database/query/` directory and sqlc generates Go code with type-safe functions.
+
+```bash
+# Generate Go code from SQL queries
+make sqlc-generate
+
+# Example: Add a new query
+# 1. Write SQL in internal/database/query/sample.sql
+# 2. Run make sqlc-generate
+# 3. Use the generated code in your repository layer
+```
+
+**Query Example** (`internal/database/query/sample.sql`):
+```sql
+-- name: GetSampleByID :one
+SELECT * FROM samples WHERE id = ?;
+
+-- name: CreateSample :execresult
+INSERT INTO samples (name, description, status)
+VALUES (?, ?, ?);
+```
+
+After running `make sqlc-generate`, you'll get type-safe Go functions:
+```go
+sample, err := store.New().GetSampleByID(ctx, db, id)
+result, err := store.New().CreateSample(ctx, db, params)
 ```
 
 ## Architecture
@@ -301,6 +343,7 @@ The generated projects follow clean architecture principles with a modular, doma
 
 3. **Repository Layer**: Database operations and data access
    - Interface-based design
+   - Type-safe queries with sqlc-generated code
    - MySQL implementation with sqlx
 
 4. **Service Layer**: Business logic and orchestration
@@ -398,6 +441,7 @@ For new projects, simply regenerate with v1.1. For existing projects, you can:
 - Go 1.23 or later
 - Docker and Docker Compose (for generated projects)
 - Make (optional, but recommended)
+- sqlc (for type-safe SQL code generation) - `go install github.com/sqlc-dev/sqlc/cmd/sqlc@latest`
 
 ## Development
 

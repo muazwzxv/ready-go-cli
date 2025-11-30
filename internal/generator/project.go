@@ -73,6 +73,8 @@ func (g *ProjectGenerator) createDirectoryStructure(projectPath string) error {
 		filepath.Join(projectPath, "cmd", "server"),
 		filepath.Join(projectPath, "internal", "config"),
 		filepath.Join(projectPath, "internal", "database", "migrations"),
+		filepath.Join(projectPath, "internal", "database", "query"),
+		filepath.Join(projectPath, "internal", "database", "store"),
 		filepath.Join(projectPath, "internal", "entity"),
 		filepath.Join(projectPath, "internal", "dto", "request"),
 		filepath.Join(projectPath, "internal", "dto", "response"),
@@ -114,7 +116,10 @@ func (g *ProjectGenerator) generateFiles(projectPath string) error {
 		{"internal/application.go.tmpl", filepath.Join(projectPath, "internal", "application.go")},
 		{"internal/config/config.go.tmpl", filepath.Join(projectPath, "internal", "config", "config.go")},
 		{"internal/database/database.go.tmpl", filepath.Join(projectPath, "internal", "database", "database.go")},
+		{"internal/database/sqlc.yaml.tmpl", filepath.Join(projectPath, "internal", "database", "sqlc.yaml")},
 		{"internal/database/migrations/migration.sql.tmpl", filepath.Join(projectPath, "internal", "database", "migrations", "001_create_initial_schema.sql")},
+		{"internal/database/query/sample.sql.tmpl", filepath.Join(projectPath, "internal", "database", "query", g.config.SampleAPINameLower+".sql")},
+		{"internal/database/store/.gitignore.tmpl", filepath.Join(projectPath, "internal", "database", "store", ".gitignore")},
 
 		// Entity
 		{"internal/entity/entity.go.tmpl", filepath.Join(projectPath, "internal", "entity", g.config.SampleAPINameLower+".go")},

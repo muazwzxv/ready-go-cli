@@ -1,0 +1,10 @@
+package service
+
+import (
+	"{{.ModuleName}}/internal/dto/request"
+	"{{.ModuleName}}/internal/dto/response"
+)
+
+type {{.SampleAPIName}}Service interface {
+	Create{{.SampleAPIName}}(req request.Create{{.SampleAPIName}}Request) (*response.{{.SampleAPIName}}Response, error)
+}

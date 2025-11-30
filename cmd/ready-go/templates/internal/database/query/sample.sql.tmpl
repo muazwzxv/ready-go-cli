@@ -1,0 +1,27 @@
+-- name: Get{{.SampleAPIName}}ByID :one
+SELECT * FROM {{.SampleTableName}} WHERE id = ?;
+
+-- name: List{{.SampleAPIName}}s :many
+SELECT * FROM {{.SampleTableName}}
+ORDER BY created_at DESC
+LIMIT ? OFFSET ?;
+
+-- name: Create{{.SampleAPIName}} :execresult
+INSERT INTO {{.SampleTableName}} (name, description, status)
+VALUES (?, ?, ?);
+
+-- name: Update{{.SampleAPIName}} :exec
+UPDATE {{.SampleTableName}}
+SET name = ?, description = ?, status = ?
+WHERE id = ?;
+
+-- name: Delete{{.SampleAPIName}} :exec
+DELETE FROM {{.SampleTableName}} WHERE id = ?;
+
+-- name: Count{{.SampleAPIName}}s :one
+SELECT COUNT(*) FROM {{.SampleTableName}};
+
+-- name: Get{{.SampleAPIName}}sByStatus :many
+SELECT * FROM {{.SampleTableName}}
+WHERE status = ?
+ORDER BY created_at DESC;

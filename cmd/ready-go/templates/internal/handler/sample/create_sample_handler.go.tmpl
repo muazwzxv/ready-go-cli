@@ -1,0 +1,18 @@
+package handler
+
+import (
+	"github.com/gofiber/fiber/v2"
+	"{{.ModuleName}}/internal/dto/request"
+	"{{.ModuleName}}/internal/dto/response"
+)
+
+func (h *{{.SampleAPIName}}Handler) Create{{.SampleAPIName}}(c *fiber.Ctx) error {
+	var req request.Create{{.SampleAPIName}}Request
+	if err := c.BodyParser(&req); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(
+			response.BadRequestErrorResponse("Invalid request body"),
+		)
+	}
+
+	return c.Status(fiber.StatusCreated).JSON(response.Create{{.SampleAPIName}}Response{})
+}

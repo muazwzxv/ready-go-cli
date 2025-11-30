@@ -1,0 +1,18 @@
+package main
+
+import (
+	"log"
+
+	app "{{.ModuleName}}/internal"
+)
+
+func main() {
+	appCtx, err := app.Init()
+	if err != nil {
+		log.Fatalf("Failed to initialize application: %v", err)
+	}
+
+	if err := appCtx.Start(); err != nil {
+		log.Fatalf("Server error: %v", err)
+	}
+}
