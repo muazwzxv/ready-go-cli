@@ -17,7 +17,7 @@ Create a new project in 3 steps:
 
 ```bash
 # 1. Create project
-ready-go new my-api --module github.com/mycompany/my-api --sample-api Product
+ready-go new --module github.com/mycompany/my-api --sample-api Product my-api
 
 # 2. Navigate and start services
 cd my-api && make up
@@ -41,25 +41,29 @@ This creates a project with default settings:
 
 ### Create with Custom Settings
 ```bash
-ready-go new shop-api \
+ready-go new \
   --module github.com/mycompany/shop \
   --sample-api Product \
-  --author "Your Name"
+  --author "Your Name" \
+  shop-api
 ```
 
 ### Create Without Kafka/Redis
 ```bash
-ready-go new simple-api \
+ready-go new \
   --module github.com/me/simple-api \
   --with-kafka=false \
-  --with-redis=false
+  --with-redis=false \
+  simple-api
 ```
 
 ## Command Options
 
 ```bash
-ready-go new <project-name> [options]
+ready-go new [options] <project-name>
 ```
+
+**Important:** Flags/options must come before the project name.
 
 ### Available Options
 
@@ -191,31 +195,34 @@ your-project/
 
 ### E-commerce Product API
 ```bash
-ready-go new product-service \
+ready-go new \
   --module github.com/myshop/products \
   --sample-api Product \
-  --author "Shop Team"
+  --author "Shop Team" \
+  product-service
 ```
 
 ### User Management Service
 ```bash
-ready-go new user-service \
+ready-go new \
   --module github.com/mycompany/users \
-  --sample-api User
+  --sample-api User \
+  user-service
 ```
 
 ### Lightweight Microservice (No Kafka/Redis)
 ```bash
-ready-go new orders-api \
+ready-go new \
   --module github.com/store/orders \
   --sample-api Order \
   --with-kafka=false \
-  --with-redis=false
+  --with-redis=false \
+  orders-api
 ```
 
 ### Interactive Setup
 ```bash
-ready-go new my-project -i
+ready-go new -i my-project
 # Follow the prompts to configure your project
 ```
 

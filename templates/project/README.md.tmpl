@@ -5,7 +5,7 @@
 ## Features
 
 - 🏗️ Clean Architecture (Entity, DTO, Repository, Service, Handler layers)
-- 🔧 Multi-config support (Environment variables + TOML files)
+- ⚙️ Simple Configuration (Viper with automatic environment override)
 - 🐳 Docker & Docker Compose setup
 - 🗄️ MySQL database with sqlx
 - 🌐 Fiber v2 web framework
@@ -54,27 +54,45 @@ make run
 
 ## Configuration
 
-The application supports multi-source configuration with the following priority:
+The application uses **Viper** for simple, powerful configuration management with automatic environment variable override.
 
-**Environment Variables → TOML File → Defaults**
+### Configuration Priority
+
+**Environment Variables → TOML File**
+
+(Environment variables have the highest priority)
 
 ### Environment Variables
 
-Key environment variables:
+Environment variables automatically override config file values. Nested keys are flattened with underscores:
 
 ```bash
-SERVER_HOST=0.0.0.0
-SERVER_PORT={{.AppPort}}
-DB_HOST=localhost
-DB_PORT={{.MySQLPort}}
-DB_USER=appuser
-DB_PASSWORD=apppassword
-DB_DATABASE={{.ProjectName}}
+# Server configuration
+export SERVER_HOST=0.0.0.0
+export SERVER_PORT={{.AppPort}}
+export SERVER_READ_TIMEOUT=5s
+export SERVER_WRITE_TIMEOUT=10s
+
+# Database configuration
+export DATABASE_HOST=localhost
+export DATABASE_PORT={{.MySQLPort}}
+export DATABASE_USER=appuser
+export DATABASE_PASSWORD=apppassword
+export DATABASE_DATABASE={{.ProjectName}}
+export DATABASE_MAX_OPEN_CONNS=50
+export DATABASE_MAX_IDLE_CONNS=20
 ```
+
+**Environment variable naming convention:**
+- Uppercase with underscores
+- Nested keys are flattened: `server.host` → `SERVER_HOST`
+- Examples:
+  - `server.port` → `SERVER_PORT`
+  - `database.max_open_conns` → `DATABASE_MAX_OPEN_CONNS`
 
 See `.env.example` for all available options.
 
-### TOML Configuration
+### TOML Configuration File
 
 Edit `config.toml` for structured configuration:
 
@@ -82,6 +100,8 @@ Edit `config.toml` for structured configuration:
 [server]
 host = "0.0.0.0"
 port = {{.AppPort}}
+read_timeout = "5s"
+write_timeout = "10s"
 
 [database]
 host = "localhost"
@@ -89,7 +109,12 @@ port = {{.MySQLPort}}
 user = "appuser"
 password = "apppassword"
 database = "{{.ProjectName}}"
+max_open_conns = 25
+max_idle_conns = 10
+conn_max_lifetime = "5m"
 ```
+
+The configuration file is **optional**. If not present, the application will use environment variables only.
 
 ## API Endpoints
 
@@ -146,7 +171,7 @@ make migrate-down
 │   └── server/
 │       └── main.go              # Application entry point
 ├── internal/
-│   ├── config/                  # Configuration management
+│   ├── config/                  # Viper-based configuration
 │   ├── database/                # Database setup & migrations
 │   ├── entity/                  # Domain models
 │   ├── dto/                     # Data Transfer Objects
@@ -166,7 +191,7 @@ make migrate-down
 
 - **Web Framework**: [Fiber v2](https://gofiber.io/)
 - **Database**: MySQL {{.MySQLVersion}} with [sqlx](https://github.com/jmoiron/sqlx)
-- **Configuration**: [TOML](https://github.com/BurntSushi/toml) + Environment Variables
+- **Configuration**: [Viper](https://github.com/spf13/viper) with TOML + Environment Variables
 {{if .WithRedis}}
 - **Cache**: Redis {{.RedisVersion}}
 {{end}}

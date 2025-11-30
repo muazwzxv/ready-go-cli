@@ -9,7 +9,7 @@ A CLI tool to scaffold production-ready Go projects with clean architecture, com
 - 🔌 **Self-Registering Routes**: Handlers register their own routes for better encapsulation
 - 🐳 **Docker Ready**: Pre-configured Docker Compose with MySQL, Redis, and Kafka
 - 🔄 **Database Migrations**: Built-in migration support with goose
-- ⚙️ **Multi-Config**: Environment variables → TOML → Defaults
+- ⚙️ **Simple Config**: Viper-based configuration with environment variable override
 - 🚀 **Ready to Run**: Generated projects compile and run immediately
 - 🎨 **Customizable**: Configurable entity names, module paths, and services
 - 📦 **Standalone Binary**: All templates embedded, no external dependencies
@@ -27,6 +27,11 @@ A CLI tool to scaffold production-ready Go projects with clean architecture, com
 - **Comment-Free Generated Code**: Cleaner output without inline comments
 - **Package Aliases**: Better import management with aliases like `healthHandler`, `userHandler`
 - **Focused Files**: Single-responsibility files make the codebase easier to navigate
+
+### Simplified Configuration
+- **Viper-Based Config**: Simpler, more maintainable configuration management
+- **Automatic Environment Override**: Environment variables automatically override TOML settings
+- **No Manual Merging**: Viper handles all configuration priority internally
 
 ## Installation
 
@@ -51,8 +56,8 @@ go install github.com/muazwzxv/ready-go-cli/cmd/ready-go@latest
 ## Quick Start
 
 ```bash
-# Create a new project
-ready-go new my-api --module github.com/myorg/my-api --sample-api Product
+# Create a new project (note: flags before project name)
+ready-go new --module github.com/myorg/my-api --sample-api Product my-api
 
 # Navigate to project
 cd my-api
@@ -74,8 +79,10 @@ Your API will be available at `http://localhost:8080`
 ### Basic Command
 
 ```bash
-ready-go new <project-name> [flags]
+ready-go new [flags] <project-name>
 ```
+
+**Important:** Flags must come before the project name.
 
 ### Available Flags
 
@@ -95,20 +102,21 @@ ready-go new <project-name> [flags]
 
 **Create a simple user management API:**
 ```bash
-ready-go new user-service --module github.com/mycompany/user-service
+ready-go new --module github.com/mycompany/user-service user-service
 ```
 
 **Create a product catalog API without Kafka:**
 ```bash
-ready-go new product-catalog \
+ready-go new \
   --module github.com/shop/products \
   --sample-api Product \
-  --with-kafka=false
+  --with-kafka=false \
+  product-catalog
 ```
 
 **Interactive mode:**
 ```bash
-ready-go new my-project -i
+ready-go new -i my-project
 ```
 
 ## Generated Project Structure
@@ -121,7 +129,7 @@ my-project/
 ├── internal/
 │   ├── application.go           # App initialization & wiring
 │   ├── config/
-│   │   └── config.go           # Multi-config loader
+│   │   └── config.go           # Viper-based config loader
 │   ├── database/
 │   │   ├── database.go         # MySQL connection
 │   │   └── migrations/         # SQL migrations
@@ -213,25 +221,56 @@ make clean           # Clean build artifacts
 
 ### Configuration
 
-Generated projects support three configuration sources (in order of precedence):
+Generated projects use **Viper** for simple, powerful configuration management with automatic environment variable override.
 
+**Configuration priority (highest to lowest):**
 1. **Environment Variables** (highest priority)
 2. **config.toml file**
-3. **Default values** (lowest priority)
 
-Example configuration:
+#### Environment Variables
+
+Environment variables automatically override config file values. Nested keys are flattened with underscores:
+
 ```bash
-# Using environment variables
-export DB_HOST=localhost
-export DB_PORT=3306
-export APP_PORT=8080
-
-# Or edit config.toml
-vim config.toml
-
-# Or use .env files with Docker
-cp .env.example .env.docker
+# Examples:
+export SERVER_HOST=0.0.0.0
+export SERVER_PORT=8080
+export DATABASE_HOST=localhost
+export DATABASE_PORT=3306
+export DATABASE_USER=myuser
+export DATABASE_PASSWORD=mypassword
+export DATABASE_MAX_OPEN_CONNS=50
 ```
+
+**Naming convention:**
+- Uppercase
+- Nested keys use underscores
+- `server.host` → `SERVER_HOST`
+- `database.max_open_conns` → `DATABASE_MAX_OPEN_CONNS`
+
+#### TOML Configuration File
+
+Edit `config.toml` for structured configuration:
+
+```toml
+[server]
+host = "0.0.0.0"
+port = 8080
+read_timeout = "5s"
+write_timeout = "10s"
+
+[database]
+host = "localhost"
+port = 3306
+user = "appuser"
+password = "apppassword"
+database = "myapp"
+max_open_conns = 25
+max_idle_conns = 10
+conn_max_lifetime = "5m"
+```
+
+The configuration file is optional. If not present, the application will use environment variables only.
 
 ### Database Migrations
 
@@ -345,6 +384,7 @@ internal/
 2. **Self-Registering Routes**: Add `RegisterRoutes(app *fiber.App)` method to handlers
 3. **Structured ApplicationContext**: Use `Services` and `Handlers` structs
 4. **Package Aliases**: Import handlers with aliases (e.g., `userHandler "path/to/handler/user"`)
+5. **Viper-Based Config**: Simplified configuration with automatic environment override
 
 ### Migration Steps
 

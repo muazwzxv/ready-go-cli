@@ -75,55 +75,65 @@ func NewCommand() *cli.Command {
 func newProjectAction(c *cli.Context) error {
 	// Get project name from arguments
 	projectName := c.Args().First()
-	
+
 	if projectName == "" {
-		return fmt.Errorf("project name is required\nUsage: ready-go new <project-name>")
+		return fmt.Errorf("project name is required\nUsage: ready-go new [flags] <project-name>")
 	}
-	
+
 	// Create project configuration
 	cfg := config.NewProjectConfig(projectName)
-	
+
 	// Check if interactive mode
 	if c.Bool("interactive") {
 		if err := PromptForConfig(cfg); err != nil {
 			return fmt.Errorf("interactive prompt failed: %w", err)
 		}
 	} else {
-		// Apply flags
-		if c.String("module") != "" {
+		// Apply flags (use IsSet to check if flag was explicitly provided)
+		if c.IsSet("module") {
 			cfg.ModuleName = c.String("module")
 		}
-		if c.String("description") != "" {
+		if c.IsSet("description") {
 			cfg.Description = c.String("description")
 		}
-		if c.String("author") != "" {
+		if c.IsSet("author") {
 			cfg.Author = c.String("author")
 		}
-		cfg.OutputDir = c.String("output")
-		cfg.WithRedis = c.Bool("with-redis")
-		cfg.WithKafka = c.Bool("with-kafka")
-		cfg.SampleAPIName = c.String("sample-api")
-		cfg.SkipGit = c.Bool("skip-git")
+		if c.IsSet("output") {
+			cfg.OutputDir = c.String("output")
+		}
+		if c.IsSet("with-redis") {
+			cfg.WithRedis = c.Bool("with-redis")
+		}
+		if c.IsSet("with-kafka") {
+			cfg.WithKafka = c.Bool("with-kafka")
+		}
+		if c.IsSet("sample-api") {
+			cfg.SampleAPIName = c.String("sample-api")
+		}
+		if c.IsSet("skip-git") {
+			cfg.SkipGit = c.Bool("skip-git")
+		}
 	}
-	
+
 	// Process configuration
 	cfg.Process()
-	
+
 	// Validate configuration
 	if err := cfg.Validate(); err != nil {
 		return fmt.Errorf("invalid configuration: %w", err)
 	}
-	
+
 	// Generate project
 	fmt.Printf("\n🚀 Creating project: %s\n", cfg.ProjectName)
 	fmt.Printf("📦 Module: %s\n", cfg.ModuleName)
 	fmt.Printf("🎯 Sample API: %s\n\n", cfg.SampleAPIName)
-	
+
 	gen := generator.NewProjectGenerator(cfg)
 	if err := gen.Generate(); err != nil {
 		return fmt.Errorf("failed to generate project: %w", err)
 	}
-	
+
 	// Success message
 	fmt.Printf("\n✅ Project successfully created at %s/%s\n\n", cfg.OutputDir, cfg.ProjectName)
 	fmt.Println("Next steps:")
@@ -133,6 +143,6 @@ func newProjectAction(c *cli.Context) error {
 	fmt.Println("  make run             # Start the application")
 	fmt.Printf("\n🌐 Access your application at http://localhost:%d\n", cfg.AppPort)
 	fmt.Printf("📚 API documentation: http://localhost:%d/api/v1/%s\n", cfg.AppPort, cfg.SampleAPINameLower+"s")
-	
+
 	return nil
 }
