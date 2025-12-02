@@ -120,6 +120,10 @@ func (g *ProjectGenerator) generateFiles(projectPath string) error {
 		{"internal/database/migrations/migration.sql.tmpl", filepath.Join(projectPath, "internal", "database", "migrations", "001_create_initial_schema.sql")},
 		{"internal/database/query/sample.sql.tmpl", filepath.Join(projectPath, "internal", "database", "query", g.config.SampleAPINameLower+".sql")},
 		{"internal/database/store/.gitignore.tmpl", filepath.Join(projectPath, "internal", "database", "store", ".gitignore")},
+		{"internal/database/store/db.go.tmpl", filepath.Join(projectPath, "internal", "database", "store", "db.go")},
+		{"internal/database/store/models.go.tmpl", filepath.Join(projectPath, "internal", "database", "store", "models.go")},
+		{"internal/database/store/querier.go.tmpl", filepath.Join(projectPath, "internal", "database", "store", "querier.go")},
+		{"internal/database/store/sample.sql.go.tmpl", filepath.Join(projectPath, "internal", "database", "store", g.config.SampleAPINameLower+".sql.go")},
 
 		// Entity
 		{"internal/entity/entity.go.tmpl", filepath.Join(projectPath, "internal", "entity", g.config.SampleAPINameLower+".go")},
