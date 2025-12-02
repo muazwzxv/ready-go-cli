@@ -7,12 +7,12 @@ ORDER BY created_at DESC
 LIMIT ? OFFSET ?;
 
 -- name: Create{{.SampleAPIName}} :execresult
-INSERT INTO {{.SampleTableName}} (name, description, status)
-VALUES (?, ?, ?);
+INSERT INTO {{.SampleTableName}} (name, description, status, created_at, updated_at)
+VALUES (?, ?, ?, NOW(), NOW());
 
 -- name: Update{{.SampleAPIName}} :exec
 UPDATE {{.SampleTableName}}
-SET name = ?, description = ?, status = ?
+SET name = ?, description = ?, status = ?, updated_at = NOW()
 WHERE id = ?;
 
 -- name: Delete{{.SampleAPIName}} :exec

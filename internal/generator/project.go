@@ -132,6 +132,7 @@ func (g *ProjectGenerator) generateFiles(projectPath string) error {
 		{"internal/dto/response/sample_response.go.tmpl", filepath.Join(projectPath, "internal", "dto", "response", g.config.SampleAPINameLower+"_response.go")},
 
 		// Repository
+		{"internal/repository/errors.go.tmpl", filepath.Join(projectPath, "internal", "repository", "errors.go")},
 		{"internal/repository/interfaces.go.tmpl", filepath.Join(projectPath, "internal", "repository", "interfaces.go")},
 		{"internal/repository/sample_repository.go.tmpl", filepath.Join(projectPath, "internal", "repository", g.config.SampleAPINameLower+"_repository.go")},
 

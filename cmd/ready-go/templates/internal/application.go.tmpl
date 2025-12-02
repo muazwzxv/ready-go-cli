@@ -13,6 +13,7 @@ import (
 	"github.com/gofiber/fiber/v2/middleware/recover"
 	"{{.ModuleName}}/internal/config"
 	"{{.ModuleName}}/internal/database"
+	"{{.ModuleName}}/internal/database/store"
 	"{{.ModuleName}}/internal/handler"
 	healthHandler "{{.ModuleName}}/internal/handler/health"
 	{{.SampleAPINameLower}}Handler "{{.ModuleName}}/internal/handler/{{.SampleAPINameLower}}"
@@ -38,7 +39,6 @@ type Handlers struct {
 	HealthHandler *healthHandler.HealthHandler
 }
 
-// NewApplicationContext creates a new ApplicationContext with the given configuration
 func NewApplicationContext(cfg *config.Config) (*ApplicationContext, error) {
 	ctx := context.Background()
 
@@ -70,7 +70,9 @@ func NewApplicationContext(cfg *config.Config) (*ApplicationContext, error) {
 	app.Use(logger.New())
 	app.Use(recover.New())
 
-	{{.SampleAPINameLower}}Repo := repository.NewMySQL{{.SampleAPIName}}Repository(db.DB)
+	queries := store.New()
+
+	{{.SampleAPINameLower}}Repo := repository.NewMySQL{{.SampleAPIName}}Repository(queries, db.DB)
 
 	{{.SampleAPINameLower}}Service := service.New{{.SampleAPIName}}Service({{.SampleAPINameLower}}Repo)
 
@@ -98,7 +100,6 @@ func NewApplicationContext(cfg *config.Config) (*ApplicationContext, error) {
 	return appCtx, nil
 }
 
-// Start starts the Fiber server with graceful shutdown
 func (a *ApplicationContext) Start() error {
 	addr := fmt.Sprintf("%s:%d", a.config.Server.Host, a.config.Server.Port)
 	log.Printf("application: starting server on %s", addr)
@@ -142,7 +143,6 @@ func (a *ApplicationContext) RegisterHandlers() {
 	handlers.{{.SampleAPIName}}Handler.RegisterRoutes(a.app)
 }
 
-// Init initializes the application using multi-source configuration loading
 func Init() (*ApplicationContext, error) {
 	cfg, err := config.LoadConfig()
 	if err != nil {
@@ -155,7 +155,6 @@ func Init() (*ApplicationContext, error) {
 	return NewApplicationContext(cfg)
 }
 
-// InitFromFile initializes the application from a config file path (backward compatibility)
 func InitFromFile(configPath string) (*ApplicationContext, error) {
 	cfg, err := config.Load(configPath)
 	if err != nil {

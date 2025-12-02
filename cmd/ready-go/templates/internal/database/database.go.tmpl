@@ -14,13 +14,11 @@ import (
 
 var ErrConfigInvalid = errors.New("invalid database configuration")
 
-// Database wraps sqlx.DB with configuration
 type Database struct {
 	*sqlx.DB
 	cfg *DBConfig
 }
 
-// DBConfig holds MySQL database configuration
 type DBConfig struct {
 	Host            string
 	Port            int
@@ -37,8 +35,6 @@ type DBConfig struct {
 	RetryBackoff    time.Duration
 }
 
-// NewDatabase creates a new Database instance with the given configuration.
-// It validates the config, opens a connection, applies pool settings, and pings the database.
 func NewDatabase(ctx context.Context, cfg *DBConfig) (*Database, error) {
 	if err := validateConfig(cfg); err != nil {
 		return nil, fmt.Errorf("%w: %v", ErrConfigInvalid, err)
@@ -79,7 +75,13 @@ func NewDatabase(ctx context.Context, cfg *DBConfig) (*Database, error) {
 	}, nil
 }
 
-// Close closes the database connection
+func (d *Database) Ping(ctx context.Context) error {
+	if d.DB != nil {
+		return d.DB.PingContext(ctx)
+	}
+	return errors.New("database connection is nil")
+}
+
 func (d *Database) Close() error {
 	if d.DB != nil {
 		return d.DB.Close()

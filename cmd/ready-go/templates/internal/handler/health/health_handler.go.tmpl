@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"context"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
@@ -8,7 +9,7 @@ import (
 )
 
 type DatabaseService interface {
-	Ping() error
+	Ping(ctx context.Context) error
 }
 
 type HealthHandler struct {
@@ -37,7 +38,7 @@ func (h *HealthHandler) HealthCheck(c *fiber.Ctx) error {
 	}
 
 	if h.dbService != nil {
-		if err := h.dbService.Ping(); err != nil {
+		if err := h.dbService.Ping(c.Context()); err != nil {
 			healthResp.Services["database"] = response.ServiceHealth{
 				Status:  "unhealthy",
 				Message: "Database connection failed: " + err.Error(),
@@ -61,11 +62,12 @@ func (h *HealthHandler) HealthCheck(c *fiber.Ctx) error {
 
 func (h *HealthHandler) ReadinessCheck(c *fiber.Ctx) error {
 	if h.dbService != nil {
-		if err := h.dbService.Ping(); err != nil {
-			return c.Status(fiber.StatusServiceUnavailable).JSON(response.ErrorResponse{
-				Error:   "service_unavailable",
-				Message: "Service not ready: database unavailable",
-			})
+		if err := h.dbService.Ping(c.Context()); err != nil {
+			return response.HandleError(c, response.BuildErrorWithCode(
+				fiber.StatusServiceUnavailable,
+				"Service not ready: database unavailable",
+				"SERVICE_UNAVAILABLE",
+			))
 		}
 	}
 

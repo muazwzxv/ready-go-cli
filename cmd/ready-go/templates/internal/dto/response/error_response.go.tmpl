@@ -1,77 +1,45 @@
 package response
 
-// ErrorResponse represents a standardized error response
+import (
+	"errors"
+
+	"github.com/gofiber/fiber/v2"
+)
+
 type ErrorResponse struct {
-	Error   string         `json:"error"`
-	Message string         `json:"message"`
-	Code    string         `json:"code,omitempty"`
-	Details map[string]any `json:"details,omitempty"`
+	HttpCode int    `json:"http_code"`
+	Message  string `json:"message"`
+	Code     string `json:"code,omitempty"`
 }
 
-// ValidationErrorResponse represents validation errors
-type ValidationErrorResponse struct {
-	ErrorResponse
-	ValidationErrors []ValidationError `json:"validation_errors,omitempty"`
-}
-
-// ValidationError represents a single validation error
-type ValidationError struct {
-	Field   string `json:"field"`
-	Message string `json:"message"`
-	Value   string `json:"value,omitempty"`
-}
-
-// NewErrorResponse creates a new error response
-func NewErrorResponse(error, message string) ErrorResponse {
-	return ErrorResponse{
-		Error:   error,
-		Message: message,
+func BuildError(httpCode int, message string) error {
+	return &ErrorResponse{
+		HttpCode: httpCode,
+		Message:  message,
 	}
 }
 
-// NewValidationErrorResponse creates a new validation error response
-func NewValidationErrorResponse(message string, validationErrors []ValidationError) ValidationErrorResponse {
-	return ValidationErrorResponse{
-		ErrorResponse: ErrorResponse{
-			Error:   "validation_failed",
-			Message: message,
-		},
-		ValidationErrors: validationErrors,
+func BuildErrorWithCode(httpCode int, message, code string) error {
+	return &ErrorResponse{
+		HttpCode: httpCode,
+		Message:  message,
+		Code:     code,
 	}
 }
 
-// NotFoundErrorResponse creates a not found error response
-func NotFoundErrorResponse(resource string) ErrorResponse {
-	return ErrorResponse{
-		Error:   "not_found",
-		Message: resource + " not found",
-		Code:    "RESOURCE_NOT_FOUND",
+func HandleError(ctx *fiber.Ctx, err error) error {
+	var e *ErrorResponse
+	if errors.As(err, &e) {
+		return ctx.Status(e.HttpCode).JSON(e)
 	}
+
+	return ctx.Status(fiber.StatusInternalServerError).JSON(&ErrorResponse{
+		HttpCode: fiber.StatusInternalServerError,
+		Message:  err.Error(),
+		Code:     "INTERNAL_ERROR",
+	})
 }
 
-// ConflictErrorResponse creates a conflict error response
-func ConflictErrorResponse(message string) ErrorResponse {
-	return ErrorResponse{
-		Error:   "conflict",
-		Message: message,
-		Code:    "RESOURCE_CONFLICT",
-	}
-}
-
-// InternalServerErrorResponse creates an internal server error response
-func InternalServerErrorResponse(message string) ErrorResponse {
-	return ErrorResponse{
-		Error:   "internal_server_error",
-		Message: message,
-		Code:    "INTERNAL_ERROR",
-	}
-}
-
-// BadRequestErrorResponse creates a bad request error response
-func BadRequestErrorResponse(message string) ErrorResponse {
-	return ErrorResponse{
-		Error:   "bad_request",
-		Message: message,
-		Code:    "BAD_REQUEST",
-	}
+func (e *ErrorResponse) Error() string {
+	return e.Message
 }

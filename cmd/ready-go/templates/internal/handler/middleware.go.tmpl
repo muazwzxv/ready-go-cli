@@ -5,41 +5,26 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/logger"
+	"{{.ModuleName}}/internal/dto/response"
 )
 
-// RequestLoggerMiddleware creates a request logging middleware
 func RequestLoggerMiddleware() fiber.Handler {
 	return logger.New(logger.Config{
 		Format: "[${time}] ${status} - ${method} ${path} - ${latency}\n",
 	})
 }
 
-// ErrorHandlerMiddleware creates a centralized error handling middleware
 func ErrorHandlerMiddleware() fiber.Handler {
 	return func(c *fiber.Ctx) error {
 		err := c.Next()
 		if err != nil {
 			log.Printf("Request error: %v", err)
-
-			// If it's a Fiber error, use its status code
-			if e, ok := err.(*fiber.Error); ok {
-				return c.Status(e.Code).JSON(fiber.Map{
-					"error":   "request_failed",
-					"message": e.Message,
-				})
-			}
-
-			// Default to 500 for other errors
-			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-				"error":   "internal_server_error",
-				"message": "An unexpected error occurred",
-			})
+			return response.HandleError(c, err)
 		}
 		return nil
 	}
 }
 
-// CORSMiddleware creates a CORS middleware for development
 func CORSMiddleware() fiber.Handler {
 	return func(c *fiber.Ctx) error {
 		c.Set("Access-Control-Allow-Origin", "*")
@@ -54,10 +39,8 @@ func CORSMiddleware() fiber.Handler {
 	}
 }
 
-// ContentTypeMiddleware ensures proper content type for API responses
 func ContentTypeMiddleware() fiber.Handler {
 	return func(c *fiber.Ctx) error {
-		// Set default content type for API responses
 		if c.Path() != "/health" && c.Path() != "/ready" && c.Path() != "/live" {
 			c.Set("Content-Type", "application/json")
 		}

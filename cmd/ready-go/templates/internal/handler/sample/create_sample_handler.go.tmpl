@@ -9,10 +9,17 @@ import (
 func (h *{{.SampleAPIName}}Handler) Create{{.SampleAPIName}}(c *fiber.Ctx) error {
 	var req request.Create{{.SampleAPIName}}Request
 	if err := c.BodyParser(&req); err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(
-			response.BadRequestErrorResponse("Invalid request body"),
-		)
+		return response.HandleError(c, response.BuildErrorWithCode(
+			fiber.StatusBadRequest,
+			"Invalid request body",
+			"INVALID_REQUEST_BODY",
+		))
 	}
 
-	return c.Status(fiber.StatusCreated).JSON(response.Create{{.SampleAPIName}}Response{})
+	result, err := h.service.Create{{.SampleAPIName}}(c.Context(), req)
+	if err != nil {
+		return response.HandleError(c, err)
+	}
+
+	return c.Status(fiber.StatusCreated).JSON(result)
 }

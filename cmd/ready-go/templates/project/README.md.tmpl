@@ -4,15 +4,15 @@
 
 ## Features
 
-- 🏗️ Clean Architecture (Entity, DTO, Repository, Service, Handler layers)
-- ⚙️ Simple Configuration (Viper with automatic environment override)
-- 🐳 Docker & Docker Compose setup
-- 🗄️ MySQL database with sqlx
-- 🔍 Type-safe SQL queries with sqlc
-- 🌐 Fiber v2 web framework
-- ✅ Health check endpoints
-- 🔒 Middleware (logging, error handling, CORS)
-- 📦 Sample CRUD API for {{.SampleAPIName}}
+- Clean Architecture (Entity, DTO, Repository, Service, Handler layers)
+- Multi-source configuration (TOML file + environment variables)
+- Docker & Docker Compose setup
+- MySQL database with sqlx
+- Type-safe SQL queries with sqlc
+- Fiber v2 web framework
+- Health check endpoints
+- Middleware (logging, error handling, CORS)
+- Sample CRUD API for {{.SampleAPIName}}
 
 ## Prerequisites
 
@@ -23,24 +23,15 @@
 
 ## Quick Start
 
-### Using Docker Compose (Recommended)
+### Using Docker Compose
 
-1. Start all services:
 ```bash
-make up
+make up                 # Start all services
+make migrate-up         # Run database migrations
+make sqlc-generate      # Generate type-safe SQL code
 ```
 
-2. Run database migrations:
-```bash
-make migrate-up
-```
-
-3. Generate sqlc code (type-safe SQL queries):
-```bash
-make sqlc-generate
-```
-
-4. Access the application:
+Access the application:
 - API: http://localhost:{{.AppPort}}
 - Health Check: http://localhost:{{.AppPort}}/health
 {{if .WithKafka}}
@@ -49,14 +40,9 @@ make sqlc-generate
 
 ### Local Development
 
-1. Start only the database services:
 ```bash
-docker-compose up -d mysql{{if .WithRedis}} redis{{end}}{{if .WithKafka}} kafka{{end}}
-```
-
-2. Run the application:
-```bash
-make run
+docker-compose up -d mysql{{if .WithRedis}} redis{{end}}{{if .WithKafka}} kafka{{end}}   # Start database services only
+make run                                                        # Run application locally
 ```
 
 ## Configuration

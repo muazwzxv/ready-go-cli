@@ -1,8 +1,10 @@
 package service
 
 import (
-	"fmt"
+	"context"
+	"errors"
 
+	"github.com/gofiber/fiber/v2"
 	"{{.ModuleName}}/internal/dto/request"
 	"{{.ModuleName}}/internal/dto/response"
 	"{{.ModuleName}}/internal/entity"
@@ -19,7 +21,7 @@ func New{{.SampleAPIName}}Service(repo repository.{{.SampleAPIName}}Repository) 
 	}
 }
 
-func (s *{{.SampleAPIName}}ServiceImpl) Create{{.SampleAPIName}}(req request.Create{{.SampleAPIName}}Request) (*response.{{.SampleAPIName}}Response, error) {
+func (s *{{.SampleAPIName}}ServiceImpl) Create{{.SampleAPIName}}(ctx context.Context, req request.Create{{.SampleAPIName}}Request) (*response.{{.SampleAPIName}}Response, error) {
 	status := entity.{{.SampleAPIName}}StatusActive
 	if req.Status != "" {
 		status = entity.{{.SampleAPIName}}Status(req.Status)
@@ -31,8 +33,19 @@ func (s *{{.SampleAPIName}}ServiceImpl) Create{{.SampleAPIName}}(req request.Cre
 		Status:      status,
 	}
 
-	if err := s.repo.Create(item); err != nil {
-		return nil, fmt.Errorf("failed to create {{.SampleAPINameLower}}: %w", err)
+	if err := s.repo.Create(ctx, item); err != nil {
+		if errors.Is(err, repository.ErrNotFound) {
+			return nil, response.BuildErrorWithCode(
+				fiber.StatusNotFound,
+				"{{.SampleAPIName}} not found",
+				"PRODUCT_NOT_FOUND",
+			)
+		}
+		return nil, response.BuildErrorWithCode(
+			fiber.StatusInternalServerError,
+			"Database operation failed",
+			"DB_ERROR",
+		)
 	}
 
 	return s.entityToResponse(item), nil

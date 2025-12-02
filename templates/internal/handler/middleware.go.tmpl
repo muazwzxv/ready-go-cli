@@ -5,6 +5,7 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/logger"
+	"{{.ModuleName}}/internal/dto/response"
 )
 
 // RequestLoggerMiddleware creates a request logging middleware
@@ -20,20 +21,7 @@ func ErrorHandlerMiddleware() fiber.Handler {
 		err := c.Next()
 		if err != nil {
 			log.Printf("Request error: %v", err)
-
-			// If it's a Fiber error, use its status code
-			if e, ok := err.(*fiber.Error); ok {
-				return c.Status(e.Code).JSON(fiber.Map{
-					"error":   "request_failed",
-					"message": e.Message,
-				})
-			}
-
-			// Default to 500 for other errors
-			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-				"error":   "internal_server_error",
-				"message": "An unexpected error occurred",
-			})
+			return response.HandleError(c, err)
 		}
 		return nil
 	}

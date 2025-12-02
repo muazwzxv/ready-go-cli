@@ -5,7 +5,6 @@ import (
 	"time"
 )
 
-// {{.SampleAPIName}}Status represents the current state of a {{.SampleAPINameLower}}
 type {{.SampleAPIName}}Status string
 
 const (
@@ -14,7 +13,6 @@ const (
 	{{.SampleAPIName}}StatusArchived {{.SampleAPIName}}Status = "archived"
 )
 
-// IsValid checks if the {{.SampleAPINameLower}} status is valid
 func (s {{.SampleAPIName}}Status) IsValid() bool {
 	switch s {
 	case {{.SampleAPIName}}StatusActive, {{.SampleAPIName}}StatusInactive, {{.SampleAPIName}}StatusArchived:
@@ -24,12 +22,10 @@ func (s {{.SampleAPIName}}Status) IsValid() bool {
 	}
 }
 
-// String returns the string representation of {{.SampleAPIName}}Status
 func (s {{.SampleAPIName}}Status) String() string {
 	return string(s)
 }
 
-// {{.SampleAPIName}} represents a {{.SampleAPINameLower}} entity
 type {{.SampleAPIName}} struct {
 	ID          int64                `db:"id" json:"id"`
 	Name        string               `db:"name" json:"name"`
@@ -39,24 +35,20 @@ type {{.SampleAPIName}} struct {
 	UpdatedAt   time.Time            `db:"updated_at" json:"updated_at"`
 }
 
-// IsActive checks if the {{.SampleAPINameLower}} is active
 func (e *{{.SampleAPIName}}) IsActive() bool {
 	return e.Status == {{.SampleAPIName}}StatusActive
 }
 
-// MarkAsActive sets the {{.SampleAPINameLower}} status to active
 func (e *{{.SampleAPIName}}) MarkAsActive() {
 	e.Status = {{.SampleAPIName}}StatusActive
 	e.UpdatedAt = time.Now()
 }
 
-// MarkAsInactive sets the {{.SampleAPINameLower}} status to inactive
 func (e *{{.SampleAPIName}}) MarkAsInactive() {
 	e.Status = {{.SampleAPIName}}StatusInactive
 	e.UpdatedAt = time.Now()
 }
 
-// MarkAsArchived sets the {{.SampleAPINameLower}} status to archived
 func (e *{{.SampleAPIName}}) MarkAsArchived() {
 	e.Status = {{.SampleAPIName}}StatusArchived
 	e.UpdatedAt = time.Now()

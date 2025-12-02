@@ -79,6 +79,14 @@ func NewDatabase(ctx context.Context, cfg *DBConfig) (*Database, error) {
 	}, nil
 }
 
+// Ping pings the database with the given context
+func (d *Database) Ping(ctx context.Context) error {
+	if d.DB != nil {
+		return d.DB.PingContext(ctx)
+	}
+	return errors.New("database connection is nil")
+}
+
 // Close closes the database connection
 func (d *Database) Close() error {
 	if d.DB != nil {
