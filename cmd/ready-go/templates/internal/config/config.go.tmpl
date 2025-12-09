@@ -1,265 +1,132 @@
-// Package config provides configuration loading from TOML files.
+// Package config provides configuration loading from multiple sources using Viper.
 package config
 
 import (
 	"fmt"
-	"os"
-	"strconv"
+	"strings"
 	"time"
 
-	"github.com/BurntSushi/toml"
+	"github.com/spf13/viper"
 )
 
 // Config holds all application configuration
 type Config struct {
-	Server   ServerConfig   `toml:"server"`
-	Database DatabaseConfig `toml:"database"`
+	Server   ServerConfig   `mapstructure:"server"`
+	Database DatabaseConfig `mapstructure:"database"`
 }
 
 // ServerConfig holds Fiber server configuration
 type ServerConfig struct {
-	Host         string        `toml:"host"`
-	Port         int           `toml:"port"`
-	ReadTimeout  time.Duration `toml:"read_timeout"`
-	WriteTimeout time.Duration `toml:"write_timeout"`
-	BodyLimit    int           `toml:"body_limit"`
-	Prefork      bool          `toml:"prefork"`
+	Host         string        `mapstructure:"host"`
+	Port         int           `mapstructure:"port"`
+	ReadTimeout  time.Duration `mapstructure:"read_timeout"`
+	WriteTimeout time.Duration `mapstructure:"write_timeout"`
+	BodyLimit    int           `mapstructure:"body_limit"`
+	Prefork      bool          `mapstructure:"prefork"`
 }
 
 // DatabaseConfig holds database configuration
 type DatabaseConfig struct {
-	Host            string        `toml:"host"`
-	Port            int           `toml:"port"`
-	User            string        `toml:"user"`
-	Password        string        `toml:"password"`
-	Database        string        `toml:"database"`
-	MaxOpenConns    int           `toml:"max_open_conns"`
-	MaxIdleConns    int           `toml:"max_idle_conns"`
-	ConnMaxLifetime time.Duration `toml:"conn_max_lifetime"`
-	RetryAttempts   int           `toml:"retry_attempts"`
-	RetryBackoff    time.Duration `toml:"retry_backoff"`
+	Host            string        `mapstructure:"host"`
+	Port            int           `mapstructure:"port"`
+	User            string        `mapstructure:"user"`
+	Password        string        `mapstructure:"password"`
+	Database        string        `mapstructure:"database"`
+	MaxOpenConns    int           `mapstructure:"max_open_conns"`
+	MaxIdleConns    int           `mapstructure:"max_idle_conns"`
+	ConnMaxLifetime time.Duration `mapstructure:"conn_max_lifetime"`
+	RetryAttempts   int           `mapstructure:"retry_attempts"`
+	RetryBackoff    time.Duration `mapstructure:"retry_backoff"`
 }
 
-// loadFromFile reads configuration from a TOML file (internal use only)
-func loadFromFile(path string) (*Config, error) {
-	data, err := os.ReadFile(path)
-	if err != nil {
-		return nil, fmt.Errorf("read config file: %w", err)
+// LoadConfig loads configuration from TOML file and environment variables.
+//
+// Configuration priority (highest to lowest):
+//  1. Environment variables
+//  2. config.toml file
+//  3. Default values
+//
+// Environment variable naming convention:
+//   - Nested config keys are flattened with underscores
+//   - All uppercase
+//   - Examples:
+//     server.host              → SERVER_HOST
+//     server.port              → SERVER_PORT
+//     database.host            → DATABASE_HOST
+//     database.max_open_conns  → DATABASE_MAX_OPEN_CONNS
+func LoadConfig() (*Config, error) {
+	v := viper.New()
+
+	// Set defaults to ensure all keys exist for env var binding
+	setDefaults(v)
+
+	// Configure config file
+	v.SetConfigName("config")
+	v.SetConfigType("toml")
+	v.AddConfigPath(".")
+	v.AddConfigPath("/etc/{{.ProjectName}}/")
+	v.AddConfigPath("$HOME/.{{.ProjectName}}")
+
+	// Read config file (optional - don't fail if not found)
+	if err := v.ReadInConfig(); err != nil {
+		if _, ok := err.(viper.ConfigFileNotFoundError); !ok {
+			// Config file was found but another error occurred
+			return nil, fmt.Errorf("read config file: %w", err)
+		}
+		// Config file not found; will use defaults + environment variables
 	}
 
+	// Enable automatic environment variable override
+	v.AutomaticEnv()
+	v.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
+
+	// Unmarshal into struct
 	var cfg Config
-	if err := toml.Unmarshal(data, &cfg); err != nil {
-		return nil, fmt.Errorf("parse config: %w", err)
-	}
-
-	if err := validate(&cfg); err != nil {
-		return nil, fmt.Errorf("validate config: %w", err)
+	if err := v.Unmarshal(&cfg); err != nil {
+		return nil, fmt.Errorf("unmarshal config: %w", err)
 	}
 
 	return &cfg, nil
 }
 
-func validate(cfg *Config) error {
-	if cfg.Server.Port <= 0 || cfg.Server.Port > 65535 {
-		return fmt.Errorf("server port must be between 1 and 65535")
-	}
-	if cfg.Database.Host == "" {
-		return fmt.Errorf("database host is required")
-	}
-	if cfg.Database.User == "" {
-		return fmt.Errorf("database user is required")
-	}
-	if cfg.Database.Database == "" {
-		return fmt.Errorf("database name is required")
-	}
-	if cfg.Database.Port <= 0 || cfg.Database.Port > 65535 {
-		return fmt.Errorf("database port must be between 1 and 65535")
-	}
-	return nil
+// setDefaults sets default configuration values
+func setDefaults(v *viper.Viper) {
+	// Server defaults
+	v.SetDefault("server.host", "0.0.0.0")
+	v.SetDefault("server.port", 8080)
+	v.SetDefault("server.read_timeout", "5s")
+	v.SetDefault("server.write_timeout", "10s")
+	v.SetDefault("server.body_limit", 4194304) // 4MB
+	v.SetDefault("server.prefork", false)
+
+	// Database defaults
+	v.SetDefault("database.host", "localhost")
+	v.SetDefault("database.port", 3306)
+	v.SetDefault("database.user", "root")
+	v.SetDefault("database.password", "")
+	v.SetDefault("database.database", "{{.ProjectName}}")
+	v.SetDefault("database.max_open_conns", 25)
+	v.SetDefault("database.max_idle_conns", 10)
+	v.SetDefault("database.conn_max_lifetime", "5m")
+	v.SetDefault("database.retry_attempts", 3)
+	v.SetDefault("database.retry_backoff", "2s")
 }
 
-// Helper functions for environment variable parsing
-
-// getEnvOrDefault returns the environment variable value or the default value if not set
-func getEnvOrDefault(key, defaultValue string) string {
-	if value := os.Getenv(key); value != "" {
-		return value
-	}
-	return defaultValue
-}
-
-// getEnvIntOrDefault returns the environment variable as int or the default value if not set or invalid
-func getEnvIntOrDefault(key string, defaultValue int) int {
-	if value := os.Getenv(key); value != "" {
-		if intValue, err := strconv.Atoi(value); err == nil {
-			return intValue
-		}
-	}
-	return defaultValue
-}
-
-// getEnvDurationOrDefault returns the environment variable as duration or the default value if not set or invalid
-func getEnvDurationOrDefault(key string, defaultValue time.Duration) time.Duration {
-	if value := os.Getenv(key); value != "" {
-		if duration, err := time.ParseDuration(value); err == nil {
-			return duration
-		}
-	}
-	return defaultValue
-}
-
-// getEnvBoolOrDefault returns the environment variable as bool or the default value if not set or invalid
-func getEnvBoolOrDefault(key string, defaultValue bool) bool {
-	if value := os.Getenv(key); value != "" {
-		if boolValue, err := strconv.ParseBool(value); err == nil {
-			return boolValue
-		}
-	}
-	return defaultValue
-}
-
-// defaultConfig returns a Config with sensible default values
-func defaultConfig() *Config {
-	return &Config{
-		Server: ServerConfig{
-			Host:         "0.0.0.0",
-			Port:         {{.AppPort}},
-			ReadTimeout:  5 * time.Second,
-			WriteTimeout: 10 * time.Second,
-			BodyLimit:    4194304, // 4MB
-			Prefork:      false,
-		},
-		Database: DatabaseConfig{
-			Host:            "localhost",
-			Port:            {{.MySQLPort}},
-			User:            "root",
-			Password:        "",
-			Database:        "{{.ProjectName}}",
-			MaxOpenConns:    25,
-			MaxIdleConns:    10,
-			ConnMaxLifetime: 5 * time.Minute,
-			RetryAttempts:   3,
-			RetryBackoff:    2 * time.Second,
-		},
-	}
-}
-
-// loadFromEnv loads configuration values from environment variables, overriding the provided config
-func loadFromEnv(cfg *Config) {
-	// Server config
-	cfg.Server.Host = getEnvOrDefault("SERVER_HOST", cfg.Server.Host)
-	cfg.Server.Port = getEnvIntOrDefault("SERVER_PORT", cfg.Server.Port)
-	cfg.Server.ReadTimeout = getEnvDurationOrDefault("SERVER_READ_TIMEOUT", cfg.Server.ReadTimeout)
-	cfg.Server.WriteTimeout = getEnvDurationOrDefault("SERVER_WRITE_TIMEOUT", cfg.Server.WriteTimeout)
-	cfg.Server.BodyLimit = getEnvIntOrDefault("SERVER_BODY_LIMIT", cfg.Server.BodyLimit)
-	cfg.Server.Prefork = getEnvBoolOrDefault("SERVER_PREFORK", cfg.Server.Prefork)
-
-	// Database config
-	cfg.Database.Host = getEnvOrDefault("DB_HOST", cfg.Database.Host)
-	cfg.Database.Port = getEnvIntOrDefault("DB_PORT", cfg.Database.Port)
-	cfg.Database.User = getEnvOrDefault("DB_USER", cfg.Database.User)
-	cfg.Database.Password = getEnvOrDefault("DB_PASSWORD", cfg.Database.Password)
-	cfg.Database.Database = getEnvOrDefault("DB_DATABASE", cfg.Database.Database)
-	cfg.Database.MaxOpenConns = getEnvIntOrDefault("DB_MAX_OPEN_CONNS", cfg.Database.MaxOpenConns)
-	cfg.Database.MaxIdleConns = getEnvIntOrDefault("DB_MAX_IDLE_CONNS", cfg.Database.MaxIdleConns)
-	cfg.Database.ConnMaxLifetime = getEnvDurationOrDefault("DB_CONN_MAX_LIFETIME", cfg.Database.ConnMaxLifetime)
-	cfg.Database.RetryAttempts = getEnvIntOrDefault("DB_RETRY_ATTEMPTS", cfg.Database.RetryAttempts)
-	cfg.Database.RetryBackoff = getEnvDurationOrDefault("DB_RETRY_BACKOFF", cfg.Database.RetryBackoff)
-}
-
-// fileExists checks if a file exists and is not a directory
-func fileExists(filename string) bool {
-	info, err := os.Stat(filename)
-	if err != nil {
-		return false
-	}
-	return !info.IsDir()
-}
-
-// mergeCfg merges the file configuration over the base configuration
-func mergeCfg(base *Config, fileCfg *Config) {
-	// Server config - only override if file has non-zero values
-	if fileCfg.Server.Host != "" {
-		base.Server.Host = fileCfg.Server.Host
-	}
-	if fileCfg.Server.Port != 0 {
-		base.Server.Port = fileCfg.Server.Port
-	}
-	if fileCfg.Server.ReadTimeout != 0 {
-		base.Server.ReadTimeout = fileCfg.Server.ReadTimeout
-	}
-	if fileCfg.Server.WriteTimeout != 0 {
-		base.Server.WriteTimeout = fileCfg.Server.WriteTimeout
-	}
-	if fileCfg.Server.BodyLimit != 0 {
-		base.Server.BodyLimit = fileCfg.Server.BodyLimit
-	}
-	base.Server.Prefork = fileCfg.Server.Prefork // bool can be false, so always override
-
-	// Database config - only override if file has non-zero values
-	if fileCfg.Database.Host != "" {
-		base.Database.Host = fileCfg.Database.Host
-	}
-	if fileCfg.Database.Port != 0 {
-		base.Database.Port = fileCfg.Database.Port
-	}
-	if fileCfg.Database.User != "" {
-		base.Database.User = fileCfg.Database.User
-	}
-	if fileCfg.Database.Password != "" {
-		base.Database.Password = fileCfg.Database.Password
-	}
-	if fileCfg.Database.Database != "" {
-		base.Database.Database = fileCfg.Database.Database
-	}
-	if fileCfg.Database.MaxOpenConns != 0 {
-		base.Database.MaxOpenConns = fileCfg.Database.MaxOpenConns
-	}
-	if fileCfg.Database.MaxIdleConns != 0 {
-		base.Database.MaxIdleConns = fileCfg.Database.MaxIdleConns
-	}
-	if fileCfg.Database.ConnMaxLifetime != 0 {
-		base.Database.ConnMaxLifetime = fileCfg.Database.ConnMaxLifetime
-	}
-	if fileCfg.Database.RetryAttempts != 0 {
-		base.Database.RetryAttempts = fileCfg.Database.RetryAttempts
-	}
-	if fileCfg.Database.RetryBackoff != 0 {
-		base.Database.RetryBackoff = fileCfg.Database.RetryBackoff
-	}
-}
-
-// LoadConfig loads configuration from multiple sources in priority order:
-// 1. Environment variables (highest priority)
-// 2. TOML file (fallback)
-// 3. Default values (lowest priority)
-func LoadConfig() (*Config, error) {
-	// Start with defaults
-	cfg := defaultConfig()
-
-	// Try to load TOML file (optional)
-	configPath := getEnvOrDefault("CONFIG_FILE", "config.toml")
-	if configPath != "" && fileExists(configPath) {
-		fileCfg, err := loadFromFile(configPath)
-		if err != nil {
-			return nil, fmt.Errorf("load config file: %w", err)
-		}
-		// Merge file config over defaults
-		mergeCfg(cfg, fileCfg)
-	}
-
-	// Override with environment variables (highest priority)
-	loadFromEnv(cfg)
-
-	// Validate final configuration
-	if err := validate(cfg); err != nil {
-		return nil, fmt.Errorf("validate config: %w", err)
-	}
-
-	return cfg, nil
-}
-
-// Load reads configuration from a TOML file (backward compatibility)
+// Load reads configuration from a TOML file (backward compatibility).
 func Load(path string) (*Config, error) {
-	return loadFromFile(path)
+	v := viper.New()
+
+	// Read specific config file
+	v.SetConfigFile(path)
+	if err := v.ReadInConfig(); err != nil {
+		return nil, fmt.Errorf("read config file: %w", err)
+	}
+
+	// Unmarshal into struct
+	var cfg Config
+	if err := v.Unmarshal(&cfg); err != nil {
+		return nil, fmt.Errorf("unmarshal config: %w", err)
+	}
+
+	return &cfg, nil
 }

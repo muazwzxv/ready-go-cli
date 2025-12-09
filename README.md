@@ -2,6 +2,8 @@
 
 A CLI tool to scaffold production-ready Go projects with clean architecture, complete with Docker setup, database migrations, and type-safe SQL queries.
 
+**Latest Version**: v1.1.0
+
 ## Features
 
 - **Clean Architecture**: Entity, DTO, Repository, Service, and Handler layers
@@ -10,7 +12,8 @@ A CLI tool to scaffold production-ready Go projects with clean architecture, com
 - **Docker Ready**: Pre-configured Docker Compose with MySQL, Redis, and Kafka
 - **Database Migrations**: Built-in migration support with goose
 - **Type-Safe SQL**: Integrated sqlc for compile-time SQL query validation
-- **Multi-Source Config**: TOML file + environment variable override
+- **Viper Configuration**: Industry-standard config management with automatic environment variable override
+- **Multi-Source Config**: Defaults → TOML file → environment variables (priority order)
 - **Ready to Run**: Generated projects compile and run immediately
 - **Customizable**: Configurable entity names, module paths, and services
 - **Standalone Binary**: All templates embedded, no external dependencies
@@ -238,7 +241,7 @@ my-project/
 - **Web Framework**: [Fiber v2](https://gofiber.io/) - Fast HTTP framework
 - **Database**: MySQL 8.0 with [sqlx](https://github.com/jmoiron/sqlx)
 - **Type-Safe SQL**: [sqlc](https://sqlc.dev/) - Generate Go code from SQL
-- **Configuration**: Multi-source config (TOML + environment variables)
+- **Configuration**: [Viper](https://github.com/spf13/viper) - Flexible configuration with automatic env var binding
 - **Migrations**: [goose](https://github.com/pressly/goose) - Database migration tool
 - **Containerization**: Docker & Docker Compose
 - **Optional Services**: Redis 7.2, Kafka 3.5 with UI
@@ -281,10 +284,11 @@ make clean            # Clean build artifacts and stop services
 
 ### Configuration
 
-Generated projects support **multi-source configuration** with the following priority:
+Generated projects use **Viper** for flexible, multi-source configuration with the following priority:
 
 1. **Environment Variables** (highest priority)
 2. **config.toml file**
+3. **Default values** (lowest priority)
 
 #### Environment Variables
 
@@ -499,6 +503,37 @@ A: Make sure sqlc is installed: `go install github.com/sqlc-dev/sqlc/cmd/sqlc@la
 **Q: "no Go files" error when building**
 
 A: The main.go file is in `cmd/server/`. Build with: `go build -o app ./cmd/server`
+
+## What's New in v1.1.0
+
+### Viper Configuration Integration
+
+This release introduces **Viper** for configuration management, replacing the previous manual implementation:
+
+**Key Improvements:**
+- ✨ **Simpler Code**: Configuration code reduced by ~60% (106 lines vs 266 lines)
+- 🔄 **Automatic Env Var Binding**: No more manual environment variable parsing
+- 🐳 **Better Docker Support**: Environment variables now work seamlessly in containers
+- 🎯 **Default Values**: All config keys have sensible defaults
+- 📦 **Industry Standard**: Using the widely-adopted Viper library
+
+**Breaking Change - Environment Variable Naming:**
+
+Environment variables now follow a consistent `DATABASE_*` naming convention:
+
+```bash
+# ❌ Old (v1.0.0)
+DB_HOST=localhost
+DB_PORT=3306
+DB_USER=appuser
+
+# ✅ New (v1.1.0)
+DATABASE_HOST=localhost
+DATABASE_PORT=3306
+DATABASE_USER=appuser
+```
+
+**Migration:** Existing projects can update their `.env` files to use the new naming, or regenerate with the latest CLI version. See [CHANGELOG.md](CHANGELOG.md) for detailed migration instructions.
 
 ## Contributing
 
