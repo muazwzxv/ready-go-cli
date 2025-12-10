@@ -2,6 +2,7 @@ package handler
 
 import (
 	"github.com/gofiber/fiber/v2"
+	"github.com/samber/do/v2"
 	service "{{.ModuleName}}/internal/service/{{.SampleAPINameLower}}"
 )
 
@@ -9,10 +10,12 @@ type {{.SampleAPIName}}Handler struct {
 	service service.{{.SampleAPIName}}Service
 }
 
-func New{{.SampleAPIName}}Handler(service service.{{.SampleAPIName}}Service) *{{.SampleAPIName}}Handler {
+func New{{.SampleAPIName}}Handler(i do.Injector) (*{{.SampleAPIName}}Handler, error) {
+	svc := do.MustInvoke[service.{{.SampleAPIName}}Service](i)
+
 	return &{{.SampleAPIName}}Handler{
-		service: service,
-	}
+		service: svc,
+	}, nil
 }
 
 func (h *{{.SampleAPIName}}Handler) RegisterRoutes(app *fiber.App) {

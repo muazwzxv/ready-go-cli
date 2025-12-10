@@ -1,6 +1,9 @@
 # Ready-Go CLI - Quick Start Guide
 
-A command-line tool to instantly create production-ready Go projects with clean architecture.
+**Version**: v2.0.0  
+**Latest Update**: December 11, 2025
+
+A command-line tool to instantly create production-ready Go projects with clean architecture and type-safe dependency injection.
 
 ## Installation
 
@@ -90,6 +93,12 @@ Every generated project includes:
 - **Service Layer**: Business logic
 - **Handler Layer**: HTTP API endpoints
 
+### 💉 Dependency Injection (NEW in v2.0)
+- **Type-safe DI**: Uses samber/do v2 (zero reflection)
+- **Automatic resolution**: No manual dependency wiring
+- **Lifecycle management**: Built-in shutdown/health checks
+- **Easy testing**: `do.Override` for mocking dependencies
+
 ### 🐳 Docker Environment
 - MySQL 8.0 database
 - Redis cache (optional)
@@ -154,9 +163,9 @@ Projects support 3 configuration layers:
 
 1. **Environment variables** (highest priority)
    ```bash
-   export DB_HOST=localhost
-   export DB_PORT=3306
-   export APP_PORT=8080
+   export DATABASE_HOST=localhost
+   export DATABASE_PORT=3306
+   export SERVER_PORT=8080
    ```
 
 2. **config.toml file**
@@ -170,6 +179,34 @@ Projects support 3 configuration layers:
    ```
 
 3. **Default values** (fallback)
+
+### Dependency Injection (v2.0+)
+
+All dependencies are managed via samber/do v2:
+
+```go
+// Application initializes DI container
+type Application struct {
+    config   *config.Config
+    injector do.Injector
+}
+
+// Services are registered as providers
+do.Provide(injector, NewDatabase)
+do.Provide(injector, NewUserService)
+do.Provide(injector, NewUserHandler)
+
+// Dependencies resolved automatically
+service := do.MustInvoke[Service](injector)
+```
+
+**Benefits:**
+- **Type-safe**: Compile-time dependency checking
+- **No boilerplate**: Automatic dependency wiring
+- **Lifecycle**: Built-in shutdown/health management
+- **Testable**: Easy mocking with `do.Override`
+
+Learn more: [samber/do documentation](https://github.com/samber/do)
 
 ### Project Structure
 
@@ -303,13 +340,77 @@ After generating a project:
 4. **Write** tests for your business logic
 5. **Deploy** using the included Dockerfile
 
+## What's New in v2.0.0
+
+### 🎯 Major Breaking Change: Dependency Injection
+
+All generated projects now use **samber/do v2** for dependency injection:
+
+**Before (v1.x - Manual Dependencies):**
+```go
+type ApplicationContext struct {
+    Config   *config.Config
+    Database *database.Database
+    Services Services
+    Handlers Handlers
+}
+
+// Manual wiring required
+app.Services.UserService = service.NewUserService(app.Database)
+app.Handlers.UserHandler = handler.NewUserHandler(app.Services.UserService)
+```
+
+**After (v2.0 - Dependency Injection):**
+```go
+type Application struct {
+    config   *config.Config
+    injector do.Injector
+}
+
+// Automatic resolution
+do.Provide(injector, NewDatabase)
+do.Provide(injector, NewUserService)      // Dependencies auto-injected
+do.Provide(injector, NewUserHandler)       // Dependencies auto-injected
+```
+
+**Key Improvements:**
+- ✅ 60% less boilerplate code
+- ✅ Type-safe (compile-time errors, no reflection)
+- ✅ Automatic dependency resolution
+- ✅ Built-in lifecycle management (shutdown/health checks)
+- ✅ Easier testing (mock with `do.Override`)
+
+### Migration from v1.x
+
+If you have projects generated with v1.x, they will continue to work. To use v2.0:
+
+```bash
+# Install v2.0
+go install github.com/yourusername/ready-go-cli/cmd/ready-go@v2.0.0
+
+# Generate new project with DI
+ready-go new my-new-project
+```
+
+To stay on v1.x:
+```bash
+# Install v1.1.0
+go install github.com/yourusername/ready-go-cli/cmd/ready-go@v1.1.0
+```
+
+See [CHANGELOG.md](CHANGELOG.md) for complete migration guide.
+
+---
+
 ## Learn More
 
 - All projects follow **Clean Architecture** principles
+- **Dependency Injection** via samber/do v2 (type-safe, zero reflection)
 - Configuration uses **multi-source loading** (ENV → TOML → Defaults)
 - API uses **Fiber v2** framework
 - Database uses **sqlx** with MySQL
 - Includes **health checks** for Kubernetes/monitoring
+- **Lifecycle management** for graceful shutdown
 
 ---
 

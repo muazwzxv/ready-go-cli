@@ -2,13 +2,20 @@ package handler
 
 import (
 	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v2/log"
 	"{{.ModuleName}}/internal/dto/request"
 	"{{.ModuleName}}/internal/dto/response"
 )
 
 func (h *{{.SampleAPIName}}Handler) Create{{.SampleAPIName}}(c *fiber.Ctx) error {
+	logger := log.WithContext(c.UserContext())
+
 	var req request.Create{{.SampleAPIName}}Request
 	if err := c.BodyParser(&req); err != nil {
+		logger.Warnw("invalid request body",
+			"error", err,
+			"path", c.Path(),
+			"ip", c.IP())
 		return response.HandleError(c, response.BuildErrorWithCode(
 			fiber.StatusBadRequest,
 			"Invalid request body",
@@ -16,10 +23,21 @@ func (h *{{.SampleAPIName}}Handler) Create{{.SampleAPIName}}(c *fiber.Ctx) error
 		))
 	}
 
+	logger.Infow("creating {{.SampleAPINameLower}}",
+		"name", req.Name,
+		"status", req.Status)
+
 	result, err := h.service.Create{{.SampleAPIName}}(c.Context(), req)
 	if err != nil {
+		logger.Errorw("failed to create {{.SampleAPINameLower}}",
+			"error", err,
+			"name", req.Name)
 		return response.HandleError(c, err)
 	}
+
+	logger.Infow("{{.SampleAPINameLower}} created successfully",
+		"id", result.ID,
+		"name", result.Name)
 
 	return c.Status(fiber.StatusCreated).JSON(result)
 }

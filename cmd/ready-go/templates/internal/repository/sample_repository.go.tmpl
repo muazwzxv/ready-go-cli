@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/samber/do/v2"
+	"{{.ModuleName}}/internal/database"
 	"{{.ModuleName}}/internal/database/store"
 	"{{.ModuleName}}/internal/dto/request"
 	"{{.ModuleName}}/internal/entity"
@@ -17,11 +19,14 @@ type MySQL{{.SampleAPIName}}Repository struct {
 	db      store.DBTX
 }
 
-func NewMySQL{{.SampleAPIName}}Repository(queries *store.Queries, db store.DBTX) {{.SampleAPIName}}Repository {
+func NewMySQL{{.SampleAPIName}}Repository(i do.Injector) ({{.SampleAPIName}}Repository, error) {
+	queries := do.MustInvoke[*store.Queries](i)
+	db := do.MustInvoke[*database.Database](i)
+
 	return &MySQL{{.SampleAPIName}}Repository{
 		queries: queries,
-		db:      db,
-	}
+		db:      db.DB, // Extract *sqlx.DB from Database wrapper
+	}, nil
 }
 
 func (r *MySQL{{.SampleAPIName}}Repository) Create(ctx context.Context, item *entity.{{.SampleAPIName}}) error {

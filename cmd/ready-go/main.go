@@ -12,7 +12,7 @@ import (
 )
 
 var (
-	version = "1.1.0"
+	version = "2.1.0"
 )
 
 //go:embed all:templates

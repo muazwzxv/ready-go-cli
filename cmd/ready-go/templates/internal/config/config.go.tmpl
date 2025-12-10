@@ -19,6 +19,7 @@ type Config struct {
 type ServerConfig struct {
 	Host         string        `mapstructure:"host"`
 	Port         int           `mapstructure:"port"`
+	LogLevel     string        `mapstructure:"log_level"`
 	ReadTimeout  time.Duration `mapstructure:"read_timeout"`
 	WriteTimeout time.Duration `mapstructure:"write_timeout"`
 	BodyLimit    int           `mapstructure:"body_limit"`
@@ -52,6 +53,7 @@ type DatabaseConfig struct {
 //   - Examples:
 //     server.host              → SERVER_HOST
 //     server.port              → SERVER_PORT
+//     server.log_level         → SERVER_LOG_LEVEL
 //     database.host            → DATABASE_HOST
 //     database.max_open_conns  → DATABASE_MAX_OPEN_CONNS
 func LoadConfig() (*Config, error) {
@@ -94,6 +96,7 @@ func setDefaults(v *viper.Viper) {
 	// Server defaults
 	v.SetDefault("server.host", "0.0.0.0")
 	v.SetDefault("server.port", 8080)
+	v.SetDefault("server.log_level", "info")
 	v.SetDefault("server.read_timeout", "5s")
 	v.SetDefault("server.write_timeout", "10s")
 	v.SetDefault("server.body_limit", 4194304) // 4MB

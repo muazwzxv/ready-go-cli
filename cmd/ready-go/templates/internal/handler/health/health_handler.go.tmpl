@@ -5,6 +5,9 @@ import (
 	"time"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v2/log"
+	"github.com/samber/do/v2"
+	"{{.ModuleName}}/internal/database"
 	"{{.ModuleName}}/internal/dto/response"
 )
 
@@ -17,11 +20,13 @@ type HealthHandler struct {
 	version   string
 }
 
-func NewHealthHandler(dbService DatabaseService, version string) *HealthHandler {
+func NewHealthHandler(i do.Injector) (*HealthHandler, error) {
+	db := do.MustInvoke[*database.Database](i)
+
 	return &HealthHandler{
-		dbService: dbService,
-		version:   version,
-	}
+		dbService: db,
+		version:   "1.0.0", // TODO: Make configurable via config
+	}, nil
 }
 
 func (h *HealthHandler) RegisterRoutes(app *fiber.App) {
@@ -30,6 +35,11 @@ func (h *HealthHandler) RegisterRoutes(app *fiber.App) {
 }
 
 func (h *HealthHandler) HealthCheck(c *fiber.Ctx) error {
+	logger := log.WithContext(c.UserContext())
+	logger.Debugw("health check requested",
+		"ip", c.IP(),
+		"user_agent", c.Get("User-Agent"))
+
 	healthResp := response.HealthResponse{
 		Status:    "healthy",
 		Timestamp: time.Now(),
@@ -39,6 +49,8 @@ func (h *HealthHandler) HealthCheck(c *fiber.Ctx) error {
 
 	if h.dbService != nil {
 		if err := h.dbService.Ping(c.Context()); err != nil {
+			logger.Warnw("health check database ping failed",
+				"error", err)
 			healthResp.Services["database"] = response.ServiceHealth{
 				Status:  "unhealthy",
 				Message: "Database connection failed: " + err.Error(),

@@ -5,6 +5,7 @@ import (
 	"errors"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/samber/do/v2"
 	"{{.ModuleName}}/internal/dto/request"
 	"{{.ModuleName}}/internal/dto/response"
 	"{{.ModuleName}}/internal/entity"
@@ -15,10 +16,12 @@ type {{.SampleAPIName}}ServiceImpl struct {
 	repo repository.{{.SampleAPIName}}Repository
 }
 
-func New{{.SampleAPIName}}Service(repo repository.{{.SampleAPIName}}Repository) {{.SampleAPIName}}Service {
+func New{{.SampleAPIName}}Service(i do.Injector) ({{.SampleAPIName}}Service, error) {
+	repo := do.MustInvoke[repository.{{.SampleAPIName}}Repository](i)
+
 	return &{{.SampleAPIName}}ServiceImpl{
 		repo: repo,
-	}
+	}, nil
 }
 
 func (s *{{.SampleAPIName}}ServiceImpl) Create{{.SampleAPIName}}(ctx context.Context, req request.Create{{.SampleAPIName}}Request) (*response.{{.SampleAPIName}}Response, error) {
