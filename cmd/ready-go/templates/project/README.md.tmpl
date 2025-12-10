@@ -299,6 +299,74 @@ func TestUserHandler(t *testing.T) {
 
 **Learn more**: [samber/do Documentation](https://do.samber.dev/docs/getting-started)
 
+## Logging
+
+This project uses Fiber's built-in structured logger for all application logging.
+
+### Log Levels
+
+Ordered from most to least verbose:
+- `trace` - Detailed trace information
+- `debug` - Debug messages (connection attempts, internal operations)
+- `info` - Informational messages (startup, shutdown, operations) **[DEFAULT]**
+- `warn` - Warning messages (non-fatal issues, retries)
+- `error` - Error messages (failures that don't crash the app)
+- `fatal` - Fatal errors (application terminates)
+- `panic` - Panic-level errors
+
+### Configuration
+
+Set log level in `config.toml`:
+```toml
+[server]
+log_level = "info"  # Change to "debug" for verbose logs
+```
+
+Or via environment variable (overrides config file):
+```bash
+export SERVER_LOG_LEVEL=debug
+./app
+```
+
+### Usage Examples
+
+**Simple logging:**
+```go
+import "github.com/gofiber/fiber/v2/log"
+
+log.Info("server started successfully")
+log.Debug("connecting to database")
+log.Warn("retry attempt failed")
+log.Error("failed to process request")
+```
+
+**Structured logging with key-value pairs:**
+```go
+log.Infow("user created",
+    "user_id", 123,
+    "email", "user@example.com",
+    "ip", "192.168.1.1")
+```
+
+**Context-aware logging (in HTTP handlers):**
+```go
+func (h *Handler) CreateUser(c *fiber.Ctx) error {
+    logger := log.WithContext(c.UserContext())
+    logger.Infow("processing request",
+        "method", c.Method(),
+        "path", c.Path(),
+        "ip", c.IP())
+    // ... handler logic
+}
+```
+
+### Production Tips
+
+- **Default level**: Use `info` in production (balanced detail/performance)
+- **Debug mode**: Set `debug` for troubleshooting issues
+- **Log aggregation**: Logs output to `stdout` (Docker/K8s compatible)
+- **Compatible with**: Datadog, Grafana Loki, CloudWatch, ELK stack
+
 ## Deployment
 
 ### Docker
@@ -316,7 +384,8 @@ docker run -p {{.AppPort}}:{{.AppPort}} --env-file .env.docker {{.ProjectName}}:
 ### Production Checklist
 
 - [ ] Update database credentials
-- [ ] Configure proper logging
+- [ ] Configure log level (set to `info` or `warn` for production)
+- [ ] Set up log aggregation (Datadog, Grafana, CloudWatch)
 - [ ] Set up monitoring and alerting
 - [ ] Enable HTTPS/TLS
 - [ ] Configure rate limiting

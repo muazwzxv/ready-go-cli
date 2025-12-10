@@ -5,6 +5,77 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.0] - 2025-12-11
+
+### 🎯 Feature Release: Structured Logging with Fiber Logger
+
+This release replaces Go's standard library logger with Fiber's built-in structured logger, providing better observability and modern logging capabilities.
+
+### Added
+- **Structured Logging**: All log statements now use key-value pairs for better parsing and analysis
+  - Example: `log.Infow("user created", "user_id", 123, "email", "user@example.com")`
+- **Context-Aware Logging**: HTTP handlers can now log with request context
+  - Automatic inclusion of request details (method, path, IP, user agent)
+  - Example: `logger := log.WithContext(c.UserContext())`
+- **Configurable Log Levels**: Control verbosity via configuration
+  - Levels: `trace`, `debug`, `info`, `warn`, `error`, `fatal`, `panic`
+  - Default: `info` (balanced detail/performance)
+- **Log Level Configuration**: New `log_level` field in server config
+  - Set via `config.toml`: `log_level = "debug"`
+  - Override via ENV: `SERVER_LOG_LEVEL=debug`
+- **Comprehensive Documentation**: New "Logging" section in generated README.md with usage examples
+
+### Changed
+- All logging now uses `github.com/gofiber/fiber/v2/log` instead of `log` stdlib
+- Application logs use structured format: `log.Infow("message", "key", value)`
+- Database connection logs use appropriate levels:
+  - Connection attempts: `debug` level
+  - Successful operations: `info` level
+  - Failed retries: `warn` level
+- Error handler middleware now logs with full request context
+- Health check handler logs access attempts at `debug` level
+
+### Improved
+- Better log filtering in production (set level to `warn` or `error`)
+- Easier debugging with `debug` level showing connection attempts and retries
+- Compatible with log aggregation tools (Datadog, Grafana Loki, CloudWatch)
+- Logs output to stdout (Docker/Kubernetes friendly)
+- Invalid log level configuration fails early with clear error message
+
+### Technical Details
+- 16 log statements migrated across 4 template files
+- All Fatal-level logs maintain same API (backward compatible)
+- `setLogLevel()` helper validates and configures log level on startup
+- Middleware logs include: method, path, IP, user agent, error details
+- Handler logs include: operation details, success/failure status, entity IDs
+
+### Example Log Output
+
+**Info level (default):**
+```
+[Info] application config loaded server_host=0.0.0.0 server_port=8080 log_level=info
+[Info] database connection established successfully
+[Info] application starting server address=0.0.0.0:8080
+```
+
+**Debug level:**
+```
+[Debug] database attempting connection user=appuser host=localhost port=3306
+[Debug] database ping attempt attempt=1 max_attempts=3
+[Info] database connection established successfully
+```
+
+**Context-aware (in handlers):**
+```
+[Info] creating user name="John Doe" email="john@example.com"
+[Info] user created successfully id=123
+```
+
+### Migration from v2.0.0
+No breaking changes. Existing projects continue to work. New projects automatically get structured logging.
+
+---
+
 ## [2.0.0] - 2025-12-11
 
 ### 🚀 Major Release: Dependency Injection with samber/do
