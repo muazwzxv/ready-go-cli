@@ -5,6 +5,8 @@ import (
 	"time"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/samber/do/v2"
+	"{{.ModuleName}}/internal/database"
 	"{{.ModuleName}}/internal/dto/response"
 )
 
@@ -17,11 +19,13 @@ type HealthHandler struct {
 	version   string
 }
 
-func NewHealthHandler(dbService DatabaseService, version string) *HealthHandler {
+func NewHealthHandler(i do.Injector) (*HealthHandler, error) {
+	db := do.MustInvoke[*database.Database](i)
+
 	return &HealthHandler{
-		dbService: dbService,
-		version:   version,
-	}
+		dbService: db,
+		version:   "1.0.0", // TODO: Make configurable via config
+	}, nil
 }
 
 func (h *HealthHandler) RegisterRoutes(app *fiber.App) {

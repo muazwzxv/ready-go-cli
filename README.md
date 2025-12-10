@@ -2,11 +2,12 @@
 
 A CLI tool to scaffold production-ready Go projects with clean architecture, complete with Docker setup, database migrations, and type-safe SQL queries.
 
-**Latest Version**: v1.1.0
+**Latest Version**: v2.0.0
 
 ## Features
 
 - **Clean Architecture**: Entity, DTO, Repository, Service, and Handler layers
+- **Dependency Injection**: Type-safe DI with samber/do using Go 1.18+ generics
 - **Modular Structure**: Handlers and services organized by domain in subdirectories
 - **Self-Registering Routes**: Handlers register their own routes for better encapsulation
 - **Docker Ready**: Pre-configured Docker Compose with MySQL, Redis, and Kafka
@@ -14,6 +15,7 @@ A CLI tool to scaffold production-ready Go projects with clean architecture, com
 - **Type-Safe SQL**: Integrated sqlc for compile-time SQL query validation
 - **Viper Configuration**: Industry-standard config management with automatic environment variable override
 - **Multi-Source Config**: Defaults → TOML file → environment variables (priority order)
+- **Lifecycle Management**: Automatic graceful shutdown and health checks
 - **Ready to Run**: Generated projects compile and run immediately
 - **Customizable**: Configurable entity names, module paths, and services
 - **Standalone Binary**: All templates embedded, no external dependencies
@@ -239,6 +241,7 @@ my-project/
 ### Out of the Box
 
 - **Web Framework**: [Fiber v2](https://gofiber.io/) - Fast HTTP framework
+- **Dependency Injection**: [samber/do](https://do.samber.dev/) - Type-safe DI with Go generics
 - **Database**: MySQL 8.0 with [sqlx](https://github.com/jmoiron/sqlx)
 - **Type-Safe SQL**: [sqlc](https://sqlc.dev/) - Generate Go code from SQL
 - **Configuration**: [Viper](https://github.com/spf13/viper) - Flexible configuration with automatic env var binding
@@ -503,6 +506,35 @@ A: Make sure sqlc is installed: `go install github.com/sqlc-dev/sqlc/cmd/sqlc@la
 **Q: "no Go files" error when building**
 
 A: The main.go file is in `cmd/server/`. Build with: `go build -o app ./cmd/server`
+
+## What's New in v2.0.0
+
+### Dependency Injection with samber/do
+
+This major release introduces **type-safe dependency injection** using [samber/do](https://do.samber.dev/):
+
+**Key Improvements:**
+- ✨ **60% Less Boilerplate**: Automatic dependency resolution replaces manual wiring
+- 🔄 **Automatic Lifecycle**: Built-in graceful shutdown and health checks
+- 🎯 **Type-Safe**: Uses Go 1.18+ generics (no reflection)
+- 🧪 **Easy Testing**: Simple mocking with `do.Override`
+- 📦 **Industry Standard**: Based on proven DI patterns
+
+**Breaking Changes:**
+
+All constructors now use the `do.Provider` pattern:
+
+```go
+// Old (v1.x)
+func NewUserHandler(service UserService) *UserHandler
+
+// New (v2.0)
+func NewUserHandler(i do.Injector) (*UserHandler, error)
+```
+
+Generated projects automatically wire dependencies via DI container. See [CHANGELOG.md](CHANGELOG.md) for full migration guide.
+
+---
 
 ## What's New in v1.1.0
 

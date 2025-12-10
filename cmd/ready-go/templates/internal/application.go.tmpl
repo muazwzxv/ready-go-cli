@@ -5,12 +5,12 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"os/signal"
 	"syscall"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/logger"
 	"github.com/gofiber/fiber/v2/middleware/recover"
+	"github.com/samber/do/v2"
 	"{{.ModuleName}}/internal/config"
 	"{{.ModuleName}}/internal/database"
 	"{{.ModuleName}}/internal/database/store"
@@ -21,26 +21,54 @@ import (
 	service "{{.ModuleName}}/internal/service/{{.SampleAPINameLower}}"
 )
 
-type ApplicationContext struct {
+// Application represents the main application with dependency injection
+type Application struct {
+	injector do.Injector
 	app      *fiber.App
-	db       *database.Database
 	config   *config.Config
-	{{.SampleAPINameLower}}Repo repository.{{.SampleAPIName}}Repository
-	Services *Services
-	Handlers *Handlers
 }
 
-type Services struct {
-	{{.SampleAPIName}}Service service.{{.SampleAPIName}}Service
+// NewApplication creates a new application with all dependencies wired via DI container
+func NewApplication(cfg *config.Config) (*Application, error) {
+	// Create DI container
+	injector := do.New()
+
+	// Provide configuration as a value (not lazy-loaded)
+	do.ProvideValue(injector, cfg)
+
+	// Provide infrastructure components
+	do.Provide(injector, NewDatabase)
+	do.Provide(injector, NewFiberApp)
+	do.Provide(injector, NewQueries)
+
+	// Provide repositories
+	do.Provide(injector, repository.NewMySQL{{.SampleAPIName}}Repository)
+
+	// Provide services
+	do.Provide(injector, service.New{{.SampleAPIName}}Service)
+
+	// Provide handlers
+	do.Provide(injector, healthHandler.NewHealthHandler)
+	do.Provide(injector, {{.SampleAPINameLower}}Handler.New{{.SampleAPIName}}Handler)
+
+	// Invoke fiber app to initialize it and register routes
+	app := do.MustInvoke[*fiber.App](injector)
+
+	// Register all routes
+	RegisterRoutes(app, injector)
+
+	log.Println("application: initialized successfully with dependency injection")
+
+	return &Application{
+		injector: injector,
+		app:      app,
+		config:   cfg,
+	}, nil
 }
 
-type Handlers struct {
-	{{.SampleAPIName}}Handler   *{{.SampleAPINameLower}}Handler.{{.SampleAPIName}}Handler
-	HealthHandler *healthHandler.HealthHandler
-}
-
-func NewApplicationContext(cfg *config.Config) (*ApplicationContext, error) {
-	ctx := context.Background()
+// NewDatabase creates a new database connection from config
+func NewDatabase(i do.Injector) (*database.Database, error) {
+	cfg := do.MustInvoke[*config.Config](i)
 
 	dbCfg := &database.DBConfig{
 		Host:            cfg.Database.Host,
@@ -55,10 +83,12 @@ func NewApplicationContext(cfg *config.Config) (*ApplicationContext, error) {
 		RetryBackoff:    cfg.Database.RetryBackoff,
 	}
 
-	db, err := database.NewDatabase(ctx, dbCfg)
-	if err != nil {
-		return nil, fmt.Errorf("initialize database: %w", err)
-	}
+	return database.NewDatabase(context.Background(), dbCfg)
+}
+
+// NewFiberApp creates a new Fiber app from config with middleware
+func NewFiberApp(i do.Injector) (*fiber.App, error) {
+	cfg := do.MustInvoke[*config.Config](i)
 
 	app := fiber.New(fiber.Config{
 		ReadTimeout:  cfg.Server.ReadTimeout,
@@ -67,43 +97,34 @@ func NewApplicationContext(cfg *config.Config) (*ApplicationContext, error) {
 		Prefork:      cfg.Server.Prefork,
 	})
 
+	// Register global middleware
 	app.Use(logger.New())
 	app.Use(recover.New())
+	app.Use(handler.RequestLoggerMiddleware())
+	app.Use(handler.ErrorHandlerMiddleware())
+	app.Use(handler.CORSMiddleware())
 
-	queries := store.New()
-
-	{{.SampleAPINameLower}}Repo := repository.NewMySQL{{.SampleAPIName}}Repository(queries, db.DB)
-
-	{{.SampleAPINameLower}}Service := service.New{{.SampleAPIName}}Service({{.SampleAPINameLower}}Repo)
-
-	{{.SampleAPINameLower}}Handler := {{.SampleAPINameLower}}Handler.New{{.SampleAPIName}}Handler({{.SampleAPINameLower}}Service)
-	healthHandler := healthHandler.NewHealthHandler(db, "1.0.0")
-
-	appCtx := &ApplicationContext{
-		app:      app,
-		db:       db,
-		config:   cfg,
-		{{.SampleAPINameLower}}Repo: {{.SampleAPINameLower}}Repo,
-		Handlers: &Handlers{
-			{{.SampleAPIName}}Handler:   {{.SampleAPINameLower}}Handler,
-			HealthHandler: healthHandler,
-		},
-		Services: &Services{
-			{{.SampleAPIName}}Service: {{.SampleAPINameLower}}Service,
-		},
-	}
-
-	appCtx.RegisterHandlers()
-
-	log.Println("application: initialized successfully")
-
-	return appCtx, nil
+	return app, nil
 }
 
-func (a *ApplicationContext) Start() error {
+// NewQueries creates sqlc queries instance
+func NewQueries(i do.Injector) (*store.Queries, error) {
+	return store.New(), nil
+}
+
+// RegisterRoutes registers all HTTP routes by invoking handlers from DI container
+func RegisterRoutes(app *fiber.App, injector do.Injector) {
+	// Invoke handlers from DI container and register their routes
+	do.MustInvoke[*healthHandler.HealthHandler](injector).RegisterRoutes(app)
+	do.MustInvoke[*{{.SampleAPINameLower}}Handler.{{.SampleAPIName}}Handler](injector).RegisterRoutes(app)
+}
+
+// Start starts the HTTP server and handles graceful shutdown
+func (a *Application) Start() error {
 	addr := fmt.Sprintf("%s:%d", a.config.Server.Host, a.config.Server.Port)
 	log.Printf("application: starting server on %s", addr)
 
+	// Start server in goroutine
 	errChan := make(chan error, 1)
 	go func() {
 		if err := a.app.Listen(addr); err != nil {
@@ -111,39 +132,26 @@ func (a *ApplicationContext) Start() error {
 		}
 	}()
 
-	sigChan := make(chan os.Signal, 1)
-	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
+	// Handle graceful shutdown with DI container
+	go func() {
+		// ShutdownOnSignals blocks until signal is received
+		signal, _ := a.injector.RootScope().ShutdownOnSignals(syscall.SIGTERM, os.Interrupt)
+		log.Printf("application: received signal %v, shutting down gracefully", signal)
+		
+		// Shutdown Fiber server
+		if err := a.app.Shutdown(); err != nil {
+			log.Printf("application: error during server shutdown: %v", err)
+		}
+		
+		log.Println("application: shutdown complete")
+		errChan <- nil
+	}()
 
-	select {
-	case err := <-errChan:
-		return fmt.Errorf("server error: %w", err)
-	case sig := <-sigChan:
-		log.Printf("application: received signal %v, shutting down gracefully", sig)
-	}
-
-	if err := a.app.Shutdown(); err != nil {
-		log.Printf("application: error during server shutdown: %v", err)
-	}
-
-	if err := a.db.Close(); err != nil {
-		log.Printf("application: error closing database: %v", err)
-	}
-
-	log.Println("application: shutdown complete")
-	return nil
+	return <-errChan
 }
 
-func (a *ApplicationContext) RegisterHandlers() {
-	a.app.Use(handler.RequestLoggerMiddleware())
-	a.app.Use(handler.ErrorHandlerMiddleware())
-	a.app.Use(handler.CORSMiddleware())
-
-	handlers := a.Handlers
-	handlers.HealthHandler.RegisterRoutes(a.app)
-	handlers.{{.SampleAPIName}}Handler.RegisterRoutes(a.app)
-}
-
-func Init() (*ApplicationContext, error) {
+// Init initializes the application with config loaded from default locations
+func Init() (*Application, error) {
 	cfg, err := config.LoadConfig()
 	if err != nil {
 		return nil, fmt.Errorf("load config: %w", err)
@@ -152,14 +160,15 @@ func Init() (*ApplicationContext, error) {
 	log.Printf("application: config loaded - server: %s:%d, database: %s:%d",
 		cfg.Server.Host, cfg.Server.Port, cfg.Database.Host, cfg.Database.Port)
 
-	return NewApplicationContext(cfg)
+	return NewApplication(cfg)
 }
 
-func InitFromFile(configPath string) (*ApplicationContext, error) {
+// InitFromFile initializes the application with config loaded from a specific file
+func InitFromFile(configPath string) (*Application, error) {
 	cfg, err := config.Load(configPath)
 	if err != nil {
 		return nil, fmt.Errorf("load config: %w", err)
 	}
 
-	return NewApplicationContext(cfg)
+	return NewApplication(cfg)
 }

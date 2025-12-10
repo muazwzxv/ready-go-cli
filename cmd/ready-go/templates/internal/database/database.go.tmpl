@@ -89,6 +89,26 @@ func (d *Database) Close() error {
 	return nil
 }
 
+// Shutdown gracefully closes the database connection
+// Implements do.Shutdowner interface for dependency injection lifecycle management
+func (d *Database) Shutdown() error {
+	log.Println("database: shutting down connection")
+	return d.Close()
+}
+
+// HealthCheck verifies database connectivity
+// Implements do.Healthchecker interface for dependency injection health checks
+func (d *Database) HealthCheck() error {
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+
+	if err := d.Ping(ctx); err != nil {
+		return fmt.Errorf("database health check failed: %w", err)
+	}
+
+	return nil
+}
+
 func validateConfig(cfg *DBConfig) error {
 	if cfg == nil {
 		return errors.New("config is nil")
