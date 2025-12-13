@@ -22,13 +22,7 @@ A CLI tool to scaffold production-ready Go projects with clean architecture, com
 
 ## Installation
 
-### Option 1: Install with Go
-
-```bash
-go install github.com/muazwzxv/ready-go-cli/cmd/ready-go@latest
-```
-
-### Option 2: Build from source
+### Build from source
 
 ```bash
 git clone https://github.com/muazwzxv/ready-go-cli.git
