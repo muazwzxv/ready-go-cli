@@ -55,7 +55,7 @@ func NewApplication(cfg *config.Config) (*Application, error) {
 	do.Provide(injector, NewQueries)
 
 	// Provide repositories
-	do.Provide(injector, repository.NewMySQL{{.SampleAPIName}}Repository)
+	do.Provide(injector, repository.New{{.SampleAPIName}}Repository)
 
 	// Provide services
 	do.Provide(injector, service.New{{.SampleAPIName}}Service)

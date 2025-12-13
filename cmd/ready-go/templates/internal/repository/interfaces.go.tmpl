@@ -4,25 +4,12 @@ package repository
 import (
 	"context"
 
-	"{{.ModuleName}}/internal/dto/request"
 	"{{.ModuleName}}/internal/entity"
 )
 
 type {{.SampleAPIName}}Repository interface {
 	Create(ctx context.Context, item *entity.{{.SampleAPIName}}) error
-
 	GetByID(ctx context.Context, id int64) (*entity.{{.SampleAPIName}}, error)
-	List(ctx context.Context, req request.List{{.SampleAPIName}}sRequest) ([]entity.{{.SampleAPIName}}, int64, error)
-	Count(ctx context.Context) (int64, error)
-	CountByStatus(ctx context.Context, status entity.{{.SampleAPIName}}Status) (int64, error)
-
-	Update(ctx context.Context, item *entity.{{.SampleAPIName}}) error
-	UpdateStatus(ctx context.Context, id int64, status entity.{{.SampleAPIName}}Status) error
-	BulkUpdateStatus(ctx context.Context, ids []int64, status entity.{{.SampleAPIName}}Status) (int, []int64, error)
-
-	Delete(ctx context.Context, id int64) error
-
-	ExistsByID(ctx context.Context, id int64) (bool, error)
 }
 
 type DatabaseRepository interface {

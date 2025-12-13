@@ -2,7 +2,6 @@ package service
 
 import (
 	"context"
-	"errors"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/samber/do/v2"
@@ -37,17 +36,10 @@ func (s *{{.SampleAPIName}}ServiceImpl) Create{{.SampleAPIName}}(ctx context.Con
 	}
 
 	if err := s.repo.Create(ctx, item); err != nil {
-		if errors.Is(err, repository.ErrNotFound) {
-			return nil, response.BuildErrorWithCode(
-				fiber.StatusNotFound,
-				"{{.SampleAPIName}} not found",
-				"PRODUCT_NOT_FOUND",
-			)
-		}
 		return nil, response.BuildErrorWithCode(
 			fiber.StatusInternalServerError,
-			"Database operation failed",
-			"DB_ERROR",
+			"Failed to create {{.SampleAPINameLower}}",
+			"CREATE_ERROR",
 		)
 	}
 
