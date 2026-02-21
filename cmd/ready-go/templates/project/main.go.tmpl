@@ -1,7 +1,8 @@
 package main
 
 import (
-	"github.com/gofiber/fiber/v2/log"
+	"log/slog"
+	"os"
 
 	app "{{.ModuleName}}/internal"
 )
@@ -9,10 +10,12 @@ import (
 func main() {
 	application, err := app.Init()
 	if err != nil {
-		log.Fatalf("Failed to initialize application: %v", err)
+		slog.Error("failed to initialize application", "error", err)
+		os.Exit(1)
 	}
 
 	if err := application.Start(); err != nil {
-		log.Fatalf("Server error: %v", err)
+		slog.Error("server error", "error", err)
+		os.Exit(1)
 	}
 }
