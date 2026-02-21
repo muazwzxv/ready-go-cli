@@ -1,18 +1,19 @@
 package handler
 
 import (
+	"log/slog"
+
 	"github.com/gofiber/fiber/v2"
-	"github.com/gofiber/fiber/v2/log"
 	"{{.ModuleName}}/internal/dto/request"
 	"{{.ModuleName}}/internal/dto/response"
 )
 
 func (h *{{.SampleAPIName}}Handler) Create{{.SampleAPIName}}(c *fiber.Ctx) error {
-	logger := log.WithContext(c.UserContext())
+	ctx := c.UserContext()
 
 	var req request.Create{{.SampleAPIName}}Request
 	if err := c.BodyParser(&req); err != nil {
-		logger.Warnw("invalid request body",
+		slog.WarnContext(ctx, "invalid request body",
 			"error", err,
 			"path", c.Path(),
 			"ip", c.IP())
@@ -23,19 +24,19 @@ func (h *{{.SampleAPIName}}Handler) Create{{.SampleAPIName}}(c *fiber.Ctx) error
 		))
 	}
 
-	logger.Infow("creating {{.SampleAPINameLower}}",
+	slog.InfoContext(ctx, "creating {{.SampleAPINameLower}}",
 		"name", req.Name,
 		"status", req.Status)
 
 	result, err := h.service.Create{{.SampleAPIName}}(c.Context(), req)
 	if err != nil {
-		logger.Errorw("failed to create {{.SampleAPINameLower}}",
+		slog.ErrorContext(ctx, "failed to create {{.SampleAPINameLower}}",
 			"error", err,
 			"name", req.Name)
 		return response.HandleError(c, err)
 	}
 
-	logger.Infow("{{.SampleAPINameLower}} created successfully",
+	slog.InfoContext(ctx, "{{.SampleAPINameLower}} created successfully",
 		"id", result.ID,
 		"name", result.Name)
 

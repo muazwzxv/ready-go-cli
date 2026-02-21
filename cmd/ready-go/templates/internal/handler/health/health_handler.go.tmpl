@@ -2,10 +2,10 @@ package handler
 
 import (
 	"context"
+	"log/slog"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
-	"github.com/gofiber/fiber/v2/log"
 	"github.com/samber/do/v2"
 	"{{.ModuleName}}/internal/database"
 	"{{.ModuleName}}/internal/dto/response"
@@ -35,8 +35,8 @@ func (h *HealthHandler) RegisterRoutes(app *fiber.App) {
 }
 
 func (h *HealthHandler) HealthCheck(c *fiber.Ctx) error {
-	logger := log.WithContext(c.UserContext())
-	logger.Debugw("health check requested",
+	ctx := c.UserContext()
+	slog.DebugContext(ctx, "health check requested",
 		"ip", c.IP(),
 		"user_agent", c.Get("User-Agent"))
 
@@ -49,7 +49,7 @@ func (h *HealthHandler) HealthCheck(c *fiber.Ctx) error {
 
 	if h.dbService != nil {
 		if err := h.dbService.Ping(c.Context()); err != nil {
-			logger.Warnw("health check database ping failed",
+			slog.WarnContext(ctx, "health check database ping failed",
 				"error", err)
 			healthResp.Services["database"] = response.ServiceHealth{
 				Status:  "unhealthy",

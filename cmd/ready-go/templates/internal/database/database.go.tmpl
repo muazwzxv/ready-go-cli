@@ -4,11 +4,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"net/url"
 	"time"
 
 	_ "github.com/go-sql-driver/mysql"
-	"github.com/gofiber/fiber/v2/log"
 	"github.com/jmoiron/sqlx"
 )
 
@@ -45,7 +45,7 @@ func NewDatabase(ctx context.Context, cfg *DBConfig) (*Database, error) {
 		return nil, fmt.Errorf("build DSN: %w", err)
 	}
 
-	log.Debugw("database attempting connection",
+	slog.DebugContext(ctx, "database attempting connection",
 		"user", cfg.User,
 		"host", cfg.Host,
 		"port", cfg.Port,
@@ -71,7 +71,7 @@ func NewDatabase(ctx context.Context, cfg *DBConfig) (*Database, error) {
 		return nil, fmt.Errorf("database ping: %w", err)
 	}
 
-	log.Info("database connection established successfully")
+	slog.InfoContext(ctx, "database connection established successfully")
 
 	return &Database{
 		DB:  db,
@@ -96,7 +96,7 @@ func (d *Database) Close() error {
 // Shutdown gracefully closes the database connection
 // Implements do.Shutdowner interface for dependency injection lifecycle management
 func (d *Database) Shutdown() error {
-	log.Info("database shutting down connection")
+	slog.Info("database shutting down connection")
 	return d.Close()
 }
 
@@ -185,7 +185,7 @@ func pingWithRetry(ctx context.Context, db *sqlx.DB, cfg *DBConfig) error {
 	var lastErr error
 	for i := 0; i < attempts; i++ {
 		if i > 0 {
-			log.Debugw("database ping attempt",
+			slog.DebugContext(ctx, "database ping attempt",
 				"attempt", i+1,
 				"max_attempts", attempts,
 				"backoff", backoff)
@@ -198,7 +198,7 @@ func pingWithRetry(ctx context.Context, db *sqlx.DB, cfg *DBConfig) error {
 
 		if err := db.PingContext(ctx); err != nil {
 			lastErr = err
-			log.Warnw("database ping failed",
+			slog.WarnContext(ctx, "database ping failed",
 				"attempt", i+1,
 				"max_attempts", attempts,
 				"error", err)
