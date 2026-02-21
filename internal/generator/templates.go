@@ -59,6 +59,11 @@ func (r *TemplateRenderer) RenderToFile(templateName, outputPath string) error {
 
 // getTemplateContent retrieves template content from embedded filesystem
 func (r *TemplateRenderer) getTemplateContent(templateName string) (string, error) {
+	return GetTemplateContent(templateName)
+}
+
+// GetTemplateContent retrieves template content from embedded filesystem (standalone function)
+func GetTemplateContent(templateName string) (string, error) {
 	// Try to read from embedded filesystem first
 	path := "templates/" + templateName
 	data, err := embeddedFS.ReadFile(path)
@@ -81,4 +86,29 @@ func (r *TemplateRenderer) getTemplateContent(templateName string) (string, erro
 	}
 
 	return "", fmt.Errorf("template %s not found in embedded FS or disk", templateName)
+}
+
+// RenderTemplateToFile renders a template with arbitrary data to a file
+func RenderTemplateToFile(templateName, outputPath string, data any) error {
+	content, err := GetTemplateContent(templateName)
+	if err != nil {
+		return fmt.Errorf("failed to get template %s: %w", templateName, err)
+	}
+
+	tmpl, err := template.New(templateName).Parse(content)
+	if err != nil {
+		return fmt.Errorf("failed to parse template: %w", err)
+	}
+
+	file, err := os.Create(outputPath)
+	if err != nil {
+		return fmt.Errorf("failed to create file %s: %w", outputPath, err)
+	}
+	defer file.Close()
+
+	if err := tmpl.Execute(file, data); err != nil {
+		return fmt.Errorf("failed to execute template: %w", err)
+	}
+
+	return nil
 }

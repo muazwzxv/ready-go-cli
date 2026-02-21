@@ -12,7 +12,67 @@ import (
 func Commands() []*cli.Command {
 	return []*cli.Command{
 		NewCommand(),
+		AddCommand(),
 	}
+}
+
+// AddCommand creates the 'add' command with subcommands
+func AddCommand() *cli.Command {
+	return &cli.Command{
+		Name:  "add",
+		Usage: "Add components to an existing project",
+		Subcommands: []*cli.Command{
+			EntitySubcommand(),
+		},
+	}
+}
+
+// EntitySubcommand creates the 'entity' subcommand
+func EntitySubcommand() *cli.Command {
+	return &cli.Command{
+		Name:      "entity",
+		Usage:     "Add a new entity with migration to an existing project",
+		ArgsUsage: "<entity-name>",
+		Action:    addEntityAction,
+	}
+}
+
+// addEntityAction handles the 'add entity' command execution
+func addEntityAction(c *cli.Context) error {
+	entityName := c.Args().First()
+
+	if entityName == "" {
+		return fmt.Errorf("entity name is required\nUsage: ready-go add entity <EntityName>")
+	}
+
+	// Create entity configuration
+	cfg := config.NewEntityConfig(entityName)
+	cfg.Process()
+
+	// Validate configuration and project structure
+	if err := cfg.Validate(); err != nil {
+		return err
+	}
+
+	fmt.Printf("\n🔍 Detected project at: %s\n", cfg.ProjectPath)
+	fmt.Printf("🚀 Adding entity: %s\n\n", cfg.EntityName)
+
+	// Generate entity files
+	gen := generator.NewEntityGenerator(cfg)
+	if err := gen.Generate(); err != nil {
+		return fmt.Errorf("failed to generate entity: %w", err)
+	}
+
+	// Success message
+	fmt.Printf("\n✅ Entity '%s' added successfully!\n\n", cfg.EntityName)
+	fmt.Println("Next steps:")
+	fmt.Println("  1. Edit the migration file to customize your table schema")
+	fmt.Println("  2. Add SQLC queries to internal/database/query/")
+	fmt.Println("  3. Run: make sqlc-generate")
+	fmt.Println("  4. Run: make migrate-up")
+	fmt.Println("  5. Implement repository, service, and handler as needed")
+
+	return nil
 }
 
 // NewCommand creates the 'new' command for scaffolding projects
