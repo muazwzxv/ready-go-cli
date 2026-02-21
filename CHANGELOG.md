@@ -5,6 +5,106 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.3.0] - 2026-02-21
+
+### 🎯 Feature Release: Migration to Go Standard Library `log/slog`
+
+This release replaces Fiber's logger (`github.com/gofiber/fiber/v2/log`) with Go's standard library `log/slog` package, providing better ecosystem compatibility and zero external dependencies for logging.
+
+### Added
+- **JSON Output by Default**: All logs are now in JSON format for easy parsing by log aggregation tools
+- **Native Context Support**: Uses `slog.InfoContext()`, `slog.ErrorContext()` patterns instead of `log.WithContext()` wrapper
+- **Standard Library Logging**: No external dependencies for application logging
+
+### Changed
+- **Logging Package**: Migrated from `github.com/gofiber/fiber/v2/log` to `log/slog`
+- **Logger Setup**: `setLogLevel()` replaced with `setupLogger()` that creates a JSON handler
+- **Context-Aware Logging**: 
+  - Before: `log.WithContext(ctx).Infow("msg", "key", value)`
+  - After: `slog.InfoContext(ctx, "msg", "key", value)`
+- **Fatal Handling**:
+  - Before: `log.Fatalf("error: %v", err)`
+  - After: `slog.Error("error", "error", err); os.Exit(1)`
+- **Log Levels**: "trace" now maps to "debug" (slog has no trace level)
+
+### Updated Templates (7)
+| Template | Changes |
+|----------|---------|
+| `main.go.tmpl` | `log.Fatalf()` → `slog.Error()` + `os.Exit(1)` |
+| `application.go.tmpl` | New `setupLogger()` with JSON handler |
+| `database.go.tmpl` | All logging → context-aware slog |
+| `middleware.go.tmpl` | Error logging → `slog.ErrorContext()` |
+| `create_sample_handler.go.tmpl` | Handler logging → context-aware slog |
+| `health_handler.go.tmpl` | Health check logging → context-aware slog |
+| `README.md.tmpl` | Updated documentation with slog examples |
+
+### Log Level Mapping
+| Config Value | slog Level |
+|--------------|------------|
+| `trace`, `debug` | `slog.LevelDebug` |
+| `info` | `slog.LevelInfo` |
+| `warn`, `warning` | `slog.LevelWarn` |
+| `error`, `fatal`, `panic` | `slog.LevelError` |
+
+### Example JSON Output
+```json
+{"time":"2026-02-21T10:30:00Z","level":"INFO","msg":"application starting server","address":"0.0.0.0:8080"}
+{"time":"2026-02-21T10:30:01Z","level":"INFO","msg":"database connection established successfully"}
+{"time":"2026-02-21T10:30:05Z","level":"DEBUG","msg":"health check requested","ip":"192.168.1.1"}
+{"time":"2026-02-21T10:30:10Z","level":"ERROR","msg":"request error","method":"POST","path":"/api/v1/products","error":"validation failed"}
+```
+
+### Benefits
+- ✅ **Zero dependencies** - Uses Go standard library only
+- ✅ **JSON by default** - Production-ready structured logs
+- ✅ **Native context** - Built-in `slog.InfoContext()` pattern
+- ✅ **Industry standard** - slog is the Go standard for structured logging
+- ✅ **Future-proof** - slog is maintained as part of Go stdlib
+- ✅ **Simpler code** - No wrapper functions needed
+
+### Migration from v2.1.0/v2.2.0
+```go
+// Before (v2.1.0/v2.2.0)
+import "github.com/gofiber/fiber/v2/log"
+log.Infow("message", "key", value)
+logger := log.WithContext(ctx)
+logger.Errorw("error", "err", err)
+
+// After (v2.3.0)
+import "log/slog"
+slog.Info("message", "key", value)
+slog.ErrorContext(ctx, "error", "err", err)
+```
+
+New projects automatically use slog. Existing projects can continue using Fiber logger or manually migrate.
+
+---
+
+## [2.2.0] - 2026-02-21
+
+### 🎯 Feature Release: Add Entity Command
+
+Added `ready-go add entity` command to scaffold new entities in existing projects.
+
+### Added
+- **`ready-go add entity <EntityName>`**: Generates entity model and goose migration file
+- Entity validation (PascalCase names, project detection, duplicate checking)
+
+### Generated Files
+For `ready-go add entity Product`:
+- `internal/entity/product.go` - Entity struct with status enum
+- `internal/database/migrations/{timestamp}_create_products.sql` - Goose migration
+
+### Usage
+```bash
+cd my-project
+ready-go add entity Product
+ready-go add entity Category
+ready-go add entity OrderItem
+```
+
+---
+
 ## [2.1.0] - 2025-12-11
 
 ### 🎯 Feature Release: Structured Logging with Fiber Logger
@@ -222,6 +322,9 @@ Or simply regenerate your project with the new CLI version for the cleanest migr
 - Health check endpoints
 - Makefile with common development tasks
 
+[2.3.0]: https://github.com/muazwzxv/ready-go-cli/compare/v2.2.0...v2.3.0
+[2.2.0]: https://github.com/muazwzxv/ready-go-cli/compare/v2.1.0...v2.2.0
+[2.1.0]: https://github.com/muazwzxv/ready-go-cli/compare/v2.0.0...v2.1.0
 [2.0.0]: https://github.com/muazwzxv/ready-go-cli/compare/v1.1.0...v2.0.0
 [1.1.0]: https://github.com/muazwzxv/ready-go-cli/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/muazwzxv/ready-go-cli/releases/tag/v1.0.0
