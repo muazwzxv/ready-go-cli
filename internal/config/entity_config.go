@@ -54,18 +54,19 @@ func (c *EntityConfig) Validate() error {
 		return fmt.Errorf("go.mod not found - run this command from a Go project root")
 	}
 
-	entityDir := filepath.Join(c.ProjectPath, "internal", "entity")
-	if _, err := os.Stat(entityDir); os.IsNotExist(err) {
-		return fmt.Errorf("internal/entity directory not found - is this a ready-go project?")
-	}
-
-	migrationsDir := filepath.Join(c.ProjectPath, "internal", "database", "migrations")
+	// Check database directories exist (simplified structure)
+	migrationsDir := filepath.Join(c.ProjectPath, "database", "migrations")
 	if _, err := os.Stat(migrationsDir); os.IsNotExist(err) {
-		return fmt.Errorf("internal/database/migrations directory not found - is this a ready-go project?")
+		return fmt.Errorf("database/migrations directory not found - is this a ready-go project?")
 	}
 
-	// Check entity doesn't already exist
-	entityFile := filepath.Join(entityDir, c.EntityNameLower+".go")
+	queriesDir := filepath.Join(c.ProjectPath, "database", "queries")
+	if _, err := os.Stat(queriesDir); os.IsNotExist(err) {
+		return fmt.Errorf("database/queries directory not found - is this a ready-go project?")
+	}
+
+	// Check entity file doesn't already exist
+	entityFile := filepath.Join(c.ProjectPath, "internal", "entity", c.EntityNameLower+".go")
 	if _, err := os.Stat(entityFile); err == nil {
 		return fmt.Errorf("entity %s already exists at %s", c.EntityName, entityFile)
 	}
@@ -74,11 +75,10 @@ func (c *EntityConfig) Validate() error {
 }
 
 // TemplateData returns a map compatible with existing templates
-// Maps EntityConfig fields to template variables used in entity.go.tmpl and migration.sql.tmpl
 func (c *EntityConfig) TemplateData() map[string]any {
 	return map[string]any{
-		"SampleAPIName":      c.EntityName,
-		"SampleAPINameLower": c.EntityNameLower,
-		"SampleTableName":    c.TableName,
+		"EntityName":      c.EntityName,
+		"EntityNameLower": c.EntityNameLower,
+		"TableName":       c.TableName,
 	}
 }

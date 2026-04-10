@@ -7,7 +7,7 @@ docker-down:
 	docker-compose down -v
 
 MIGRATION_DIR=database/migrations
-DATABASE_URL="{{.ProjectName}}_user:{{.ProjectName}}_pass@tcp(localhost:{{.DBPort}})/{{.ProjectName}}_db?parseTime=true"
+DATABASE_URL="demo_user:demo_pass@tcp(localhost:3306)/demo_db?parseTime=true"
 
 migrate-up:
 	goose -dir $(MIGRATION_DIR) mysql $(DATABASE_URL) up

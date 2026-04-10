@@ -45,11 +45,9 @@ func addEntityAction(c *cli.Context) error {
 		return fmt.Errorf("entity name is required\nUsage: ready-go add entity <EntityName>")
 	}
 
-	// Create entity configuration
 	cfg := config.NewEntityConfig(entityName)
 	cfg.Process()
 
-	// Validate configuration and project structure
 	if err := cfg.Validate(); err != nil {
 		return err
 	}
@@ -57,20 +55,17 @@ func addEntityAction(c *cli.Context) error {
 	fmt.Printf("\n🔍 Detected project at: %s\n", cfg.ProjectPath)
 	fmt.Printf("🚀 Adding entity: %s\n\n", cfg.EntityName)
 
-	// Generate entity files
 	gen := generator.NewEntityGenerator(cfg)
 	if err := gen.Generate(); err != nil {
 		return fmt.Errorf("failed to generate entity: %w", err)
 	}
 
-	// Success message
 	fmt.Printf("\n✅ Entity '%s' added successfully!\n\n", cfg.EntityName)
 	fmt.Println("Next steps:")
 	fmt.Println("  1. Edit the migration file to customize your table schema")
-	fmt.Println("  2. Add SQLC queries to internal/database/query/")
+	fmt.Println("  2. Add SQLC queries to database/queries/")
 	fmt.Println("  3. Run: make sqlc-generate")
 	fmt.Println("  4. Run: make migrate-up")
-	fmt.Println("  5. Implement repository, service, and handler as needed")
 
 	return nil
 }
@@ -88,43 +83,29 @@ func NewCommand() *cli.Command {
 				Usage:   "Go module name",
 			},
 			&cli.StringFlag{
-				Name:    "description",
-				Aliases: []string{"d"},
-				Usage:   "Project description",
+				Name:  "port",
+				Usage: "Server port",
+				Value: "8080",
 			},
 			&cli.StringFlag{
-				Name:  "author",
-				Usage: "Author name",
+				Name:  "db-port",
+				Usage: "MySQL port",
+				Value: "3306",
 			},
 			&cli.StringFlag{
-				Name:    "output",
-				Aliases: []string{"o"},
-				Value:   ".",
-				Usage:   "Output directory",
-			},
-			&cli.BoolFlag{
-				Name:  "with-redis",
-				Value: true,
-				Usage: "Include Redis in docker-compose",
-			},
-			&cli.BoolFlag{
-				Name:  "with-kafka",
-				Value: true,
-				Usage: "Include Kafka in docker-compose",
+				Name:  "redis-port",
+				Usage: "Redis port",
+				Value: "6379",
 			},
 			&cli.StringFlag{
-				Name:  "sample-api",
+				Name:  "kafka-port",
+				Usage: "Kafka port",
+				Value: "9092",
+			},
+			&cli.StringFlag{
+				Name:  "sample-name",
+				Usage: "Sample entity name",
 				Value: "User",
-				Usage: "Sample API entity name (e.g., User, Product)",
-			},
-			&cli.BoolFlag{
-				Name:  "skip-git",
-				Usage: "Skip git initialization",
-			},
-			&cli.BoolFlag{
-				Name:    "interactive",
-				Aliases: []string{"i"},
-				Usage:   "Interactive mode with prompts",
 			},
 		},
 		Action: newProjectAction,
@@ -133,58 +114,40 @@ func NewCommand() *cli.Command {
 
 // newProjectAction handles the 'new' command execution
 func newProjectAction(c *cli.Context) error {
-	// Get project name from arguments
 	projectName := c.Args().First()
 
 	if projectName == "" {
 		return fmt.Errorf("project name is required\nUsage: ready-go new [flags] <project-name>")
 	}
 
-	// Create project configuration
 	cfg := config.NewProjectConfig(projectName)
 
-	// Check if interactive mode
-	if c.Bool("interactive") {
-		if err := PromptForConfig(cfg); err != nil {
-			return fmt.Errorf("interactive prompt failed: %w", err)
-		}
-	} else {
-		// Apply flags (use IsSet to check if flag was explicitly provided)
-		if c.IsSet("module") {
-			cfg.ModuleName = c.String("module")
-		}
-		if c.IsSet("description") {
-			cfg.Description = c.String("description")
-		}
-		if c.IsSet("author") {
-			cfg.Author = c.String("author")
-		}
-		if c.IsSet("output") {
-			cfg.OutputDir = c.String("output")
-		}
-		if c.IsSet("with-redis") {
-			cfg.WithRedis = c.Bool("with-redis")
-		}
-		if c.IsSet("with-kafka") {
-			cfg.WithKafka = c.Bool("with-kafka")
-		}
-		if c.IsSet("sample-api") {
-			cfg.SampleAPIName = c.String("sample-api")
-		}
-		if c.IsSet("skip-git") {
-			cfg.SkipGit = c.Bool("skip-git")
-		}
+	// Apply flags
+	if c.IsSet("module") {
+		cfg.ModuleName = c.String("module")
+	}
+	if c.IsSet("port") {
+		cfg.ServerPort = c.String("port")
+	}
+	if c.IsSet("db-port") {
+		cfg.DBPort = c.String("db-port")
+	}
+	if c.IsSet("redis-port") {
+		cfg.RedisPort = c.String("redis-port")
+	}
+	if c.IsSet("kafka-port") {
+		cfg.KafkaPort = c.String("kafka-port")
+	}
+	if c.IsSet("sample-name") {
+		cfg.SampleAPIName = c.String("sample-name")
 	}
 
-	// Process configuration
 	cfg.Process()
 
-	// Validate configuration
 	if err := cfg.Validate(); err != nil {
 		return fmt.Errorf("invalid configuration: %w", err)
 	}
 
-	// Generate project
 	fmt.Printf("\n🚀 Creating project: %s\n", cfg.ProjectName)
 	fmt.Printf("📦 Module: %s\n", cfg.ModuleName)
 	fmt.Printf("🎯 Sample API: %s\n\n", cfg.SampleAPIName)
@@ -194,15 +157,14 @@ func newProjectAction(c *cli.Context) error {
 		return fmt.Errorf("failed to generate project: %w", err)
 	}
 
-	// Success message
-	fmt.Printf("\n✅ Project successfully created at %s/%s\n\n", cfg.OutputDir, cfg.ProjectName)
+	fmt.Printf("\n✅ Project successfully created at ./%s\n\n", cfg.ProjectName)
 	fmt.Println("Next steps:")
 	fmt.Printf("  cd %s\n", cfg.ProjectName)
-	fmt.Println("  make up              # Start all services")
-	fmt.Println("  make migrate-up      # Run migrations")
-	fmt.Println("  make run             # Start the application")
-	fmt.Printf("\n🌐 Access your application at http://localhost:%d\n", cfg.AppPort)
-	fmt.Printf("📚 API documentation: http://localhost:%d/api/v1/%s\n", cfg.AppPort, cfg.SampleAPINameLower+"s")
+	fmt.Println("  make docker-up      # Start all services")
+	fmt.Println("  make migrate-up     # Run migrations")
+	fmt.Println("  make sqlc-generate  # Generate SQLC models")
+	fmt.Println("  make run-api        # Start the application")
+	fmt.Printf("\n🌐 Access your application at http://localhost:%s\n", cfg.ServerPort)
 
 	return nil
 }

@@ -1,127 +1,47 @@
+version: "3.8"
+
 services:
   mysql:
-    image: mysql:{{.MySQLVersion}}
-    container_name: {{.GetContainerName "mysql"}}
+    image: mysql:8.0
+    container_name: {{.ProjectName}}-mysql
     environment:
       MYSQL_ROOT_PASSWORD: rootpassword
-      MYSQL_DATABASE: {{.ProjectName}}
-      MYSQL_USER: appuser
-      MYSQL_PASSWORD: apppassword
+      MYSQL_DATABASE: {{.ProjectName}}_db
+      MYSQL_USER: {{.ProjectName}}_user
+      MYSQL_PASSWORD: {{.ProjectName}}_pass
     ports:
-      - "{{.MySQLPort}}:3306"
+      - "{{.DBPort}}:3306"
     volumes:
-      - {{.GetVolumeName "mysql"}}:/var/lib/mysql
-    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
-    healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-prootpassword"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-    networks:
-      - {{.GetNetworkName}}
-{{if .WithRedis}}
+      - mysql_data:/var/lib/mysql
+
   redis:
-    image: redis:{{.RedisVersion}}
-    container_name: {{.GetContainerName "redis"}}
+    image: redis:7-alpine
+    container_name: {{.ProjectName}}-redis
     ports:
       - "{{.RedisPort}}:6379"
     volumes:
-      - {{.GetVolumeName "redis"}}:/data
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-    networks:
-      - {{.GetNetworkName}}
-{{end}}
-{{if .WithKafka}}
+      - redis_data:/data
+
   kafka:
-    image: confluentinc/cp-kafka:{{.KafkaVersion}}
-    container_name: {{.GetContainerName "kafka"}}
-    hostname: kafka
-    environment:
-      # KRaft mode configuration
-      KAFKA_NODE_ID: 1
-      KAFKA_PROCESS_ROLES: broker,controller
-      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
-      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
-      # Listeners - INTERNAL for docker network, EXTERNAL for host
-      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093,INTERNAL://0.0.0.0:29092
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092,INTERNAL://kafka:29092
-      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,CONTROLLER:PLAINTEXT,INTERNAL:PLAINTEXT
-      KAFKA_INTER_BROKER_LISTENER_NAME: INTERNAL
-      # Auto topic creation
-      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
-      # Cluster ID for KRaft
-      CLUSTER_ID: MkU3OEVBNTcwNTJENDM2Qk
-      # Log directories
-      KAFKA_LOG_DIRS: /var/lib/kafka/data
+    image: confluentinc/cp-kafka:7.5.0
+    container_name: {{.ProjectName}}-kafka
     ports:
       - "{{.KafkaPort}}:9092"
-    volumes:
-      - {{.GetVolumeName "kafka"}}:/var/lib/kafka/data
-    healthcheck:
-      test: ["CMD-SHELL", "kafka-broker-api-versions --bootstrap-server localhost:9092 || exit 1"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 30s
-    networks:
-      - {{.GetNetworkName}}
-
-  kafka-ui:
-    image: provectuslabs/kafka-ui:latest
-    container_name: {{.GetContainerName "kafka-ui"}}
     environment:
-      KAFKA_CLUSTERS_0_NAME: local
-      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:29092
-      DYNAMIC_CONFIG_ENABLED: "true"
-    ports:
-      - "{{.KafkaUIPort}}:8080"
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:{{.KafkaPort}}
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
     depends_on:
-      kafka:
-        condition: service_healthy
-    networks:
-      - {{.GetNetworkName}}
-{{end}}
-  app:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    image: {{.ProjectName}}:latest
-    container_name: {{.GetContainerName "app"}}
-    env_file:
-      - .env.docker
-    ports:
-      - "{{.AppPort}}:{{.AppPort}}"
-    depends_on:
-      mysql:
-        condition: service_healthy
-{{if .WithRedis}}
-      redis:
-        condition: service_healthy
-{{end}}
-{{if .WithKafka}}
-      kafka:
-        condition: service_healthy
-{{end}}
-    networks:
-      - {{.GetNetworkName}}
-    restart: unless-stopped
+      - zookeeper
+
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.5.0
+    container_name: {{.ProjectName}}-zookeeper
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
 
 volumes:
-  {{.GetVolumeName "mysql"}}:
-    driver: local
-{{if .WithRedis}}
-  {{.GetVolumeName "redis"}}:
-    driver: local
-{{end}}
-{{if .WithKafka}}
-  {{.GetVolumeName "kafka"}}:
-    driver: local
-{{end}}
-
-networks:
-  {{.GetNetworkName}}:
-    driver: bridge
+  mysql_data:
+  redis_data:

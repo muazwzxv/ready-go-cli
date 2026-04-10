@@ -1,0 +1,17 @@
+-- name: Get{{.SampleAPIName}} :one
+SELECT * FROM {{.SampleTableName}} WHERE id = ?;
+
+-- name: List{{.SampleAPIName}}s :many
+SELECT * FROM {{.SampleTableName}} ORDER BY created_at DESC;
+
+-- name: Create{{.SampleAPIName}} :execresult
+INSERT INTO {{.SampleTableName}} (name, email, created_at, updated_at)
+VALUES (?, ?, NOW(), NOW());
+
+-- name: Update{{.SampleAPIName}} :exec
+UPDATE {{.SampleTableName}}
+SET name = ?, email = ?, updated_at = NOW()
+WHERE id = ?;
+
+-- name: Delete{{.SampleAPIName}} :exec
+DELETE FROM {{.SampleTableName}} WHERE id = ?;

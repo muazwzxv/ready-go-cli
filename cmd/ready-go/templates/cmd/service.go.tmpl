@@ -1,0 +1,14 @@
+package cmd
+
+import (
+	"database/sql"
+
+	"github.com/redis/go-redis/v9"
+	"{{.ModuleName}}/internal/models"
+)
+
+type APIService struct {
+	DB      *sql.DB
+	Queries *models.Queries
+	Redis   *redis.Client
+}

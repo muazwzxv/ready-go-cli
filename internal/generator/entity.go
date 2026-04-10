@@ -2,6 +2,7 @@ package generator
 
 import (
 	"fmt"
+	"os"
 	"path/filepath"
 	"time"
 
@@ -20,7 +21,7 @@ func NewEntityGenerator(cfg *config.EntityConfig) *EntityGenerator {
 	}
 }
 
-// Generate creates the entity file and migration
+// Generate creates the entity file, migration, and queries
 func (g *EntityGenerator) Generate() error {
 	// Generate entity file
 	if err := g.generateEntityFile(); err != nil {
@@ -32,20 +33,26 @@ func (g *EntityGenerator) Generate() error {
 		return fmt.Errorf("generate migration file: %w", err)
 	}
 
+	// Generate queries file
+	if err := g.generateQueriesFile(); err != nil {
+		return fmt.Errorf("generate queries file: %w", err)
+	}
+
 	return nil
 }
 
 // generateEntityFile creates the entity Go file
 func (g *EntityGenerator) generateEntityFile() error {
-	outputPath := filepath.Join(
-		g.config.ProjectPath,
-		"internal",
-		"entity",
-		g.config.EntityNameLower+".go",
-	)
+	// Create internal/entity directory if it doesn't exist
+	entityDir := filepath.Join(g.config.ProjectPath, "internal", "entity")
+	if err := createDirIfNotExists(entityDir); err != nil {
+		return err
+	}
+
+	outputPath := filepath.Join(entityDir, g.config.EntityNameLower+".go")
 
 	err := RenderTemplateToFile(
-		"internal/entity/entity.go.tmpl",
+		"entity/entity.go.tmpl",
 		outputPath,
 		g.config.TemplateData(),
 	)
@@ -59,20 +66,18 @@ func (g *EntityGenerator) generateEntityFile() error {
 
 // generateMigrationFile creates the goose migration SQL file
 func (g *EntityGenerator) generateMigrationFile() error {
-	// Generate timestamp in goose format (YYYYMMDDHHMMSS)
 	timestamp := time.Now().Format("20060102150405")
 	filename := fmt.Sprintf("%s_create_%s.sql", timestamp, g.config.TableName)
 
 	outputPath := filepath.Join(
 		g.config.ProjectPath,
-		"internal",
 		"database",
 		"migrations",
 		filename,
 	)
 
 	err := RenderTemplateToFile(
-		"internal/database/migrations/migration.sql.tmpl",
+		"entity/migration.sql.tmpl",
 		outputPath,
 		g.config.TemplateData(),
 	)
@@ -81,5 +86,34 @@ func (g *EntityGenerator) generateMigrationFile() error {
 	}
 
 	fmt.Printf("  ✓ Created %s\n", outputPath)
+	return nil
+}
+
+// generateQueriesFile creates the SQLC queries file
+func (g *EntityGenerator) generateQueriesFile() error {
+	outputPath := filepath.Join(
+		g.config.ProjectPath,
+		"database",
+		"queries",
+		g.config.EntityNameLower+".sql",
+	)
+
+	err := RenderTemplateToFile(
+		"entity/queries.sql.tmpl",
+		outputPath,
+		g.config.TemplateData(),
+	)
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("  ✓ Created %s\n", outputPath)
+	return nil
+}
+
+func createDirIfNotExists(dir string) error {
+	if _, err := os.Stat(dir); os.IsNotExist(err) {
+		return os.MkdirAll(dir, 0755)
+	}
 	return nil
 }

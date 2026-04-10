@@ -1,0 +1,44 @@
+package {{.SampleAPINameLower}}
+
+import (
+	"database/sql"
+
+	"github.com/gofiber/fiber/v2"
+	"github.com/redis/go-redis/v9"
+	"{{.ModuleName}}/internal/handlers/util"
+	"{{.ModuleName}}/internal/models"
+)
+
+type Handler struct {
+	DB      *sql.DB
+	Queries *models.Queries
+	Redis   *redis.Client
+}
+
+func (h *Handler) GetByID(c *fiber.Ctx) error {
+	id, err := c.ParamsInt("id")
+	if err != nil {
+		return util.HandleError(c, util.BuildErrorWithCode(
+			fiber.StatusBadRequest,
+			"Invalid ID format",
+			"INVALID_ID_FORMAT",
+		))
+	}
+
+	// TODO: Uncomment after running `make sqlc-generate`
+	// result, err := h.Queries.Get{{.SampleAPIName}}(c.Context(), h.DB, int32(id))
+	// if err != nil {
+	// 	if errors.Is(err, sql.ErrNoRows) {
+	// 		return util.HandleError(c, util.BuildErrorWithCode(
+	// 			fiber.StatusNotFound,
+	// 			"{{.SampleAPIName}} not found",
+	// 			"{{.SampleAPINameUpper}}_NOT_FOUND",
+	// 		))
+	// 	}
+	// 	return util.HandleError(c, err)
+	// }
+	// return c.JSON(util.SuccessResponse{Data: result})
+
+	_ = id // Remove this line after implementing
+	return c.JSON(util.SuccessResponse{Message: "Not implemented - run `make sqlc-generate` first"})
+}
