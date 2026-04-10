@@ -71,7 +71,7 @@ func (g *ProjectGenerator) createDirectoryStructure(projectPath string) error {
 		filepath.Join(projectPath, "cmd", "api"),
 		filepath.Join(projectPath, "internal", "config"),
 		filepath.Join(projectPath, "internal", "handlers", g.config.SampleAPINameLower),
-		filepath.Join(projectPath, "internal", "response"),
+		filepath.Join(projectPath, "internal", "handlers", "util"),
 		filepath.Join(projectPath, "internal", "models"),
 		filepath.Join(projectPath, "internal", "repository"),
 		filepath.Join(projectPath, "database", "migrations"),
@@ -101,7 +101,7 @@ func (g *ProjectGenerator) generateFiles(projectPath string) error {
 		{"internal/config/config.go.tmpl", filepath.Join(projectPath, "internal", "config", "config.go")},
 		{"internal/handlers/handler.go.tmpl", filepath.Join(projectPath, "internal", "handlers", "handler.go")},
 		{"internal/handlers/sample/sample_handler.go.tmpl", filepath.Join(projectPath, "internal", "handlers", g.config.SampleAPINameLower, "handler.go")},
-		{"internal/response/response.go.tmpl", filepath.Join(projectPath, "internal", "response", "response.go")},
+		{"internal/handlers/util/util.go.tmpl", filepath.Join(projectPath, "internal", "handlers", "util", "util.go")},
 		{"internal/models/db.go.tmpl", filepath.Join(projectPath, "internal", "models", "db.go")},
 		{"internal/repository/db.go.tmpl", filepath.Join(projectPath, "internal", "repository", "db.go")},
 

@@ -5,8 +5,8 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/redis/go-redis/v9"
+	"{{.ModuleName}}/internal/handlers/util"
 	"{{.ModuleName}}/internal/models"
-	"{{.ModuleName}}/internal/response"
 )
 
 type Handler struct {
@@ -18,7 +18,7 @@ type Handler struct {
 func (h *Handler) GetByID(c *fiber.Ctx) error {
 	id, err := c.ParamsInt("id")
 	if err != nil {
-		return response.HandleError(c, response.BuildErrorWithCode(
+		return util.HandleError(c, util.BuildErrorWithCode(
 			fiber.StatusBadRequest,
 			"Invalid ID format",
 			"INVALID_ID_FORMAT",
@@ -29,16 +29,16 @@ func (h *Handler) GetByID(c *fiber.Ctx) error {
 	// result, err := h.Queries.Get{{.SampleAPIName}}(c.Context(), h.DB, int32(id))
 	// if err != nil {
 	// 	if errors.Is(err, sql.ErrNoRows) {
-	// 		return response.HandleError(c, response.BuildErrorWithCode(
+	// 		return util.HandleError(c, util.BuildErrorWithCode(
 	// 			fiber.StatusNotFound,
 	// 			"{{.SampleAPIName}} not found",
 	// 			"{{.SampleAPINameUpper}}_NOT_FOUND",
 	// 		))
 	// 	}
-	// 	return response.HandleError(c, err)
+	// 	return util.HandleError(c, err)
 	// }
-	// return c.JSON(response.SuccessResponse{Data: result})
+	// return c.JSON(util.SuccessResponse{Data: result})
 
 	_ = id // Remove this line after implementing
-	return c.JSON(response.SuccessResponse{Message: "Not implemented - run `make sqlc-generate` first"})
+	return c.JSON(util.SuccessResponse{Message: "Not implemented - run `make sqlc-generate` first"})
 }
