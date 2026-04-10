@@ -109,8 +109,9 @@ my-project/
 │   │   ├── handler.go          # SetupHandler + middleware
 │   │   └── user/               # Domain-specific handlers
 │   │       └── handler.go
-│   ├── response/
-│   │   └── response.go         # Error/success responses
+│   ├── handlers/
+│   │   ├── util/
+│   │   │   └── util.go         # Error/success helpers
 │   ├── models/                 # SQLC generated code
 │   └── repository/
 │       └── db.go               # MySQL + Redis connections
@@ -236,13 +237,15 @@ make sqlc-generate
 3. Use in handlers:
 
 ```go
+import "myapp/internal/handlers/util"
+
 func (h *Handler) GetByID(c *fiber.Ctx) error {
     id := c.ParamsInt("id")
     user, err := h.Queries.GetUser(c.Context(), h.DB, int32(id))
     if err != nil {
-        return response.HandleError(c, err)
+        return util.HandleError(c, err)
     }
-    return c.JSON(response.SuccessResponse{Data: user})
+    return c.JSON(util.SuccessResponse{Data: user})
 }
 ```
 
@@ -265,7 +268,7 @@ This creates:
 Return structured errors with codes:
 
 ```go
-return response.HandleError(c, response.BuildErrorWithCode(
+return util.HandleError(c, util.BuildErrorWithCode(
     fiber.StatusNotFound,
     "User not found",
     "USER_NOT_FOUND",
