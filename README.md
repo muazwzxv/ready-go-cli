@@ -1,23 +1,19 @@
 # Ready-Go CLI
 
-A CLI tool to scaffold production-ready Go projects with clean architecture, complete with Docker setup, database migrations, and type-safe SQL queries.
+A CLI tool to scaffold production-ready Go projects with a simplified, practical architecture.
 
-**Latest Version**: v2.0.0
+**Latest Version**: v3.0.0
 
 ## Features
 
-- **Clean Architecture**: Entity, DTO, Repository, Service, and Handler layers
-- **Dependency Injection**: Type-safe DI with samber/do using Go 1.18+ generics
-- **Modular Structure**: Handlers and services organized by domain in subdirectories
-- **Self-Registering Routes**: Handlers register their own routes for better encapsulation
+- **Simplified Architecture**: Handlers directly use SQLC models - no complex abstraction layers
 - **Docker Ready**: Pre-configured Docker Compose with MySQL, Redis, and Kafka
 - **Database Migrations**: Built-in migration support with goose
 - **Type-Safe SQL**: Integrated sqlc for compile-time SQL query validation
-- **Viper Configuration**: Industry-standard config management with automatic environment variable override
-- **Multi-Source Config**: Defaults → TOML file → environment variables (priority order)
-- **Lifecycle Management**: Automatic graceful shutdown and health checks
-- **Ready to Run**: Generated projects compile and run immediately
-- **Customizable**: Configurable entity names, module paths, and services
+- **Environment Configuration**: Simple dotenv-based configuration
+- **Request Logging**: Built-in HTTP request logging with slog
+- **Error Handling**: Structured error responses with error codes
+- **Domain Organization**: Handlers organized by domain in subdirectories
 - **Standalone Binary**: All templates embedded, no external dependencies
 
 ## Installation
@@ -31,21 +27,19 @@ go build -o ready-go ./cmd/ready-go
 
 # Move to your PATH
 mv ready-go ~/go/bin/
-# or
-mv ready-go /usr/local/bin/
 ```
 
 ## Quick Start
 
 ```bash
 # Create a new project
-ready-go new my-api
+ready-go new my-api --module github.com/mycompany/my-api
 
 # Navigate to project
 cd my-api
 
 # Start services with Docker
-make up
+make docker-up
 
 # Run migrations
 make migrate-up
@@ -54,7 +48,7 @@ make migrate-up
 make sqlc-generate
 
 # Start the application
-make run
+make run-api
 ```
 
 Your API will be available at `http://localhost:8080`
@@ -64,116 +58,40 @@ Your API will be available at `http://localhost:8080`
 ### Command Syntax
 
 ```bash
-ready-go new [options] <project-name>
+ready-go new [flags] <project-name>
 ```
-
-The CLI supports two modes:
-
-1. **Interactive mode** (default): Prompts you for all configuration options
-2. **Flag mode**: Specify options directly via command-line flags
 
 ### Available Flags
 
 | Flag | Alias | Default | Description |
 |------|-------|---------|-------------|
 | `--module` | `-m` | `github.com/username/<project-name>` | Go module path |
-| `--description` | `-d` | Auto-generated | Project description |
-| `--author` | | Empty | Author name |
-| `--output` | `-o` | `.` | Output directory |
-| `--sample-api` | | `User` | Sample API entity name (e.g., User, Product, Order) |
-| `--with-redis` | | `true` | Include Redis in docker-compose |
-| `--with-kafka` | | `true` | Include Kafka in docker-compose |
-| `--skip-git` | | `false` | Skip git initialization |
-| `--interactive` | `-i` | `false` | Force interactive mode with prompts |
-
-### Interactive Prompts
-
-When you run `ready-go new` in interactive mode (default), you'll be prompted for:
-
-| Prompt | Description | Default |
-|--------|-------------|---------|
-| **Project Name** | Name of your project | Required argument |
-| **Module Name** | Go module path | `github.com/username/<project-name>` |
-| **Description** | Project description | Auto-generated |
-| **Author** | Author name | Empty |
-| **Sample API Entity** | Entity name for sample CRUD API | `User` |
-| **Table Name** | Database table name | Auto-pluralized from entity |
-| **Application Port** | HTTP server port | `8080` |
-| **MySQL Port** | MySQL database port | `3306` |
-| **Include Redis** | Add Redis to docker-compose | `yes` |
-| **Include Kafka** | Add Kafka to docker-compose | `yes` |
+| `--port` | | `8080` | Server HTTP port |
+| `--db-port` | | `3306` | MySQL port |
+| `--redis-port` | | `6379` | Redis port |
+| `--kafka-port` | | `9092` | Kafka port |
+| `--sample-name` | | `User` | Sample entity name (e.g., User, Product) |
 
 ### Examples
 
-#### Interactive Mode (Default)
-
-**Basic project with interactive prompts:**
+**Simple project:**
 ```bash
 ready-go new my-api
-# CLI will prompt you for:
-# - Module name
-# - Description
-# - Author
-# - Sample API entity
-# - Table name
-# - Ports
-# - Include Redis/Kafka
 ```
 
-**Force interactive mode explicitly:**
+**With custom module and entity:**
 ```bash
-ready-go new --interactive my-api
-# or
-ready-go new -i my-api
+ready-go new product-service \
+  --module github.com/mycompany/product-service \
+  --sample-name Product
 ```
 
-#### Using Command-Line Flags
-
-**Simple project with custom module:**
+**Custom ports:**
 ```bash
-ready-go new --module github.com/mycompany/user-api user-api
-```
-
-**Product catalog without Kafka:**
-```bash
-ready-go new \
-  --module github.com/mycompany/product-catalog \
-  --sample-api Product \
-  --with-kafka=false \
-  product-catalog
-```
-
-**Full configuration with flags:**
-```bash
-ready-go new \
-  --module github.com/mycompany/order-service \
-  --description "Microservice for order management" \
-  --author "John Doe" \
-  --sample-api Order \
-  --with-redis=true \
-  --with-kafka=false \
-  order-service
-```
-
-**Minimal setup (no Redis, no Kafka):**
-```bash
-ready-go new \
-  --module github.com/mycompany/minimal-api \
-  --with-redis=false \
-  --with-kafka=false \
-  minimal-api
-```
-
-#### Mixed Mode (Flags + Interactive)
-
-**Specify some options via flags, get prompted for the rest:**
-```bash
-ready-go new --module github.com/mycompany/my-api my-api
-# CLI will prompt for remaining options:
-# - Description
-# - Author
-# - Sample API entity
-# - etc.
+ready-go new my-api \
+  --port 3000 \
+  --db-port 3307 \
+  --redis-port 6380
 ```
 
 ## Generated Project Structure
@@ -181,157 +99,96 @@ ready-go new --module github.com/mycompany/my-api my-api
 ```
 my-project/
 ├── cmd/
-│   └── server/
-│       └── main.go              # Application entry point
+│   ├── api/
+│   │   └── main.go              # Application entry point
+│   └── service.go               # APIService struct
 ├── internal/
-│   ├── application.go           # App initialization & wiring
 │   ├── config/
-│   │   └── config.go           # Multi-source config loader
-│   ├── database/
-│   │   ├── database.go         # MySQL connection setup
-│   │   ├── sqlc.yaml           # sqlc configuration
-│   │   ├── query/              # SQL queries for sqlc
-│   │   │   └── sample.sql
-│   │   ├── store/              # Generated sqlc code (auto-generated)
-│   │   └── migrations/         # SQL migration files
-│   │       └── 001_create_samples_table.sql
-│   ├── entity/                 # Domain models
-│   │   └── {entity}.go
-│   ├── dto/
-│   │   ├── request/            # API request DTOs
-│   │   │   ├── common.go
-│   │   │   └── {entity}_request.go
-│   │   └── response/           # API response DTOs
-│   │       ├── common.go
-│   │       ├── error_response.go
-│   │       └── {entity}_response.go
-│   ├── repository/             # Data access layer
-│   │   ├── interfaces.go
-│   │   ├── errors.go
-│   │   └── {entity}_repository.go
-│   ├── service/                # Business logic layer
-│   │   └── {entity}/           # Organized by domain
-│   │       ├── {entity}.go
-│   │       └── create_{entity}_service.go
-│   └── handler/                # HTTP handlers
-│       ├── health/
-│       │   └── health_handler.go
-│       ├── {entity}/
-│       │   ├── {entity}_handler.go
-│       │   └── create_{entity}_handler.go
-│       └── middleware.go
+│   │   └── config.go           # Environment config loader
+│   ├── handlers/
+│   │   ├── handler.go          # SetupHandler + middleware
+│   │   └── user/               # Domain-specific handlers
+│   │       └── handler.go
+│   ├── response/
+│   │   └── response.go         # Error/success responses
+│   ├── models/                 # SQLC generated code
+│   └── repository/
+│       └── db.go               # MySQL + Redis connections
+├── database/
+│   ├── migrations/             # Goose migration files
+│   └── queries/                # SQLC query files
 ├── Dockerfile                  # Multi-stage Docker build
-├── docker-compose.yml          # MySQL, Redis, Kafka setup
+├── docker-compose.yml          # MySQL, Redis, Kafka
 ├── Makefile                    # Development commands
-├── config.toml                 # Configuration file
-├── .env.docker                 # Docker environment
+├── sqlc.yaml                   # SQLC configuration
 ├── .env.example                # Example environment variables
-├── .gitignore
 └── README.md
 ```
 
-## Tools & Technologies Included
+## Tools & Technologies
 
 ### Out of the Box
 
 - **Web Framework**: [Fiber v2](https://gofiber.io/) - Fast HTTP framework
-- **Dependency Injection**: [samber/do](https://do.samber.dev/) - Type-safe DI with Go generics
-- **Database**: MySQL 8.0 with [sqlx](https://github.com/jmoiron/sqlx)
+- **Database**: MySQL 8.0 with standard `database/sql`
 - **Type-Safe SQL**: [sqlc](https://sqlc.dev/) - Generate Go code from SQL
-- **Configuration**: [Viper](https://github.com/spf13/viper) - Flexible configuration with automatic env var binding
+- **Configuration**: [godotenv](https://github.com/joho/godotenv) - Simple env file loading
 - **Migrations**: [goose](https://github.com/pressly/goose) - Database migration tool
-- **Containerization**: Docker & Docker Compose
-- **Optional Services**: Redis 7.2, Kafka 3.5 with UI
+- **Cache**: Redis 7.x with [go-redis](https://github.com/redis/go-redis)
+- **Message Queue**: Kafka (optional, ready to use)
+- **Logging**: Go standard library `log/slog`
 
-### Architecture Pattern
+### Architecture
 
-Generated projects follow **Clean Architecture** principles:
+Generated projects use a practical, simplified architecture:
 
 ```
-Handler → Service → Repository → Database
-   ↓         ↓          ↓
-  DTO    Interface   Entity
+HTTP Request → Handler → SQLC Models → Database
+                   ↓
+            Response (JSON)
 ```
 
 **Benefits:**
-- Testable business logic (services are pure Go)
-- Swappable implementations (interface-based repositories)
-- Clear separation of concerns
-- Easy to mock for unit tests
+- Minimal boilerplate code
+- Direct database access via SQLC
+- Type-safe SQL queries at compile time
+- Easy to understand and extend
+- Ready for monolithic growth with domain subfolders
 
 ## Working with Generated Projects
 
 ### Make Commands
 
 ```bash
-make help             # Show all available commands
-make up               # Start all Docker services
-make down             # Stop all Docker services
-make logs             # View service logs
+make docker-up        # Start Docker services (MySQL, Redis, Kafka)
+make docker-down      # Stop Docker services
 make migrate-up       # Run database migrations
 make migrate-down     # Rollback last migration
-make migrate-status   # Check migration status
-make migrate-create   # Create new migration (use NAME=migration_name)
+make migrate-create   # Create new migration
 make sqlc-generate    # Generate Go code from SQL queries
-make run              # Run the application locally
-make build            # Build the binary
-make test             # Run tests
-make clean            # Clean build artifacts and stop services
+make run-api          # Run the application locally
+make build-api        # Build the binary
 ```
 
 ### Configuration
 
-Generated projects use **Viper** for flexible, multi-source configuration with the following priority:
-
-1. **Environment Variables** (highest priority)
-2. **config.toml file**
-3. **Default values** (lowest priority)
-
-#### Environment Variables
-
-Environment variables automatically override config file values:
+Configuration is loaded from environment variables via `.env` file:
 
 ```bash
-# Server configuration
-export SERVER_HOST=0.0.0.0
-export SERVER_PORT=8080
-export SERVER_READ_TIMEOUT=5s
-export SERVER_WRITE_TIMEOUT=10s
+# Copy example file
+cp .env.example .env
 
-# Database configuration
-export DATABASE_HOST=localhost
-export DATABASE_PORT=3306
-export DATABASE_USER=myuser
-export DATABASE_PASSWORD=mypassword
-export DATABASE_DATABASE=myapp
-export DATABASE_MAX_OPEN_CONNS=50
-export DATABASE_MAX_IDLE_CONNS=20
-```
-
-**Naming convention**: Nested keys are flattened with underscores
-- `server.host` → `SERVER_HOST`
-- `database.max_open_conns` → `DATABASE_MAX_OPEN_CONNS`
-
-#### TOML Configuration File
-
-Edit `config.toml` for structured configuration:
-
-```toml
-[server]
-host = "0.0.0.0"
-port = 8080
-read_timeout = "5s"
-write_timeout = "10s"
-
-[database]
-host = "localhost"
-port = 3306
-user = "appuser"
-password = "apppassword"
-database = "myapp"
-max_open_conns = 25
-max_idle_conns = 10
-conn_max_lifetime = "5m"
+# Edit as needed
+DB_HOST=localhost
+DB_PORT=3306
+DB_USER=myapi_user
+DB_PASSWORD=myapi_pass
+DB_NAME=myapi_db
+SERVER_PORT=8080
+REDIS_HOST=localhost
+REDIS_PORT=6379
+KAFKA_HOST=localhost
+KAFKA_PORT=9092
 ```
 
 ### Database Operations
@@ -340,40 +197,34 @@ conn_max_lifetime = "5m"
 
 ```bash
 # Create a new migration
-make migrate-create NAME=add_users_table
+make migrate-create
+# Enter migration name when prompted
 
 # Run all pending migrations
 make migrate-up
 
 # Rollback the last migration
 make migrate-down
-
-# Check migration status
-make migrate-status
 ```
 
-Migration files are created in `internal/database/migrations/` with timestamp prefixes.
+Migration files are created in `database/migrations/` with timestamp prefixes.
 
 #### sqlc - Type-Safe SQL Queries
 
-The generated project uses [sqlc](https://sqlc.dev/) to generate type-safe Go code from SQL queries.
-
 **Workflow:**
 
-1. Write SQL queries in `internal/database/query/*.sql`:
+1. Write SQL queries in `database/queries/*.sql`:
 
 ```sql
--- name: GetUserByID :one
+-- name: GetUser :one
 SELECT * FROM users WHERE id = ?;
 
 -- name: CreateUser :execresult
-INSERT INTO users (name, email, status, created_at, updated_at)
-VALUES (?, ?, ?, NOW(), NOW());
+INSERT INTO users (name, email, created_at)
+VALUES (?, ?, NOW());
 
 -- name: ListUsers :many
-SELECT * FROM users
-ORDER BY created_at DESC
-LIMIT ? OFFSET ?;
+SELECT * FROM users ORDER BY created_at DESC;
 ```
 
 2. Generate Go code:
@@ -382,59 +233,65 @@ LIMIT ? OFFSET ?;
 make sqlc-generate
 ```
 
-3. Use the generated type-safe functions in your repository:
+3. Use in handlers:
 
 ```go
-import "your-module/internal/database/store"
-
-queries := store.New()
-user, err := queries.GetUserByID(ctx, db, userID)
-users, err := queries.ListUsers(ctx, db, store.ListUsersParams{
-    Limit:  20,
-    Offset: 0,
-})
+func (h *Handler) GetByID(c *fiber.Ctx) error {
+    id := c.ParamsInt("id")
+    user, err := h.Queries.GetUser(c.Context(), h.DB, int32(id))
+    if err != nil {
+        return response.HandleError(c, err)
+    }
+    return c.JSON(response.SuccessResponse{Data: user})
+}
 ```
 
-**Benefits:**
-- Compile-time SQL validation
-- Type-safe database operations
-- Auto-generated Go structs from schema
-- No runtime reflection overhead
-- Catches SQL errors at build time
+### Adding New Entities
 
-### Generated API Endpoints
+Use the `add entity` command to scaffold new entities:
 
-**Health Checks:**
-- `GET /health` - Basic health check with database status
-- `GET /health/ready` - Readiness check for Kubernetes/orchestrators
+```bash
+cd my-project
+ready-go add entity Product
+```
 
-**Sample Entity CRUD:**
-- `POST /api/v1/{entities}` - Create new entity
+This creates:
+- `internal/entity/product.go` - Entity struct
+- `database/migrations/xxx_create_products.sql` - Migration
+- `database/queries/product.sql` - SQLC queries
 
-The generated code provides a foundation. You can easily extend it by adding more handler methods:
+### Error Handling
+
+Return structured errors with codes:
 
 ```go
-// In handler/{entity}/{entity}_handler.go
-func (h *UserHandler) RegisterRoutes(app *fiber.App) {
-    app.Post("/api/v1/users", h.CreateUser)
-    // Add more routes:
-    app.Get("/api/v1/users", h.ListUsers)
-    app.Get("/api/v1/users/:id", h.GetUser)
-    app.Put("/api/v1/users/:id", h.UpdateUser)
-    app.Delete("/api/v1/users/:id", h.DeleteUser)
+return response.HandleError(c, response.BuildErrorWithCode(
+    fiber.StatusNotFound,
+    "User not found",
+    "USER_NOT_FOUND",
+))
+```
+
+Response format:
+```json
+{
+  "http_code": 404,
+  "message": "User not found",
+  "code": "USER_NOT_FOUND"
 }
 ```
 
 ## Requirements
 
 ### CLI Tool
-- Go 1.23 or later
+- Go 1.21 or later
 
 ### Generated Projects
-- Go 1.23 or later
-- Docker and Docker Compose (for containerized development)
+- Go 1.21 or later
+- Docker and Docker Compose
 - Make (optional but recommended)
-- sqlc (for SQL code generation) - `go install github.com/sqlc-dev/sqlc/cmd/sqlc@latest`
+- sqlc - `go install github.com/sqlc-dev/sqlc/cmd/sqlc@latest`
+- goose - `go install github.com/pressly/goose/v3/cmd/goose@latest`
 
 ## Development
 
@@ -453,113 +310,44 @@ go build -o ready-go ./cmd/ready-go
 # Test with a new project
 ./ready-go new test-project
 cd test-project
-make up && make migrate-up && make run
+make docker-up && make migrate-up && make run-api
 ```
 
-### Template Variables
+## What's New in v3.0.0
 
-Templates are located in `cmd/ready-go/templates/` and support these variables:
+### Simplified Architecture
 
-- `{{.ProjectName}}` - Project name
-- `{{.ModuleName}}` - Go module name
-- `{{.Description}}` - Project description
-- `{{.Author}}` - Author name
-- `{{.SampleAPIName}}` - Entity name (e.g., "User", "Product")
-- `{{.SampleAPINameLower}}` - Lowercase entity name (e.g., "user", "product")
-- `{{.SampleTableName}}` - Table name (e.g., "users", "products")
-- `{{.AppPort}}` - Application HTTP port
-- `{{.MySQLPort}}` - MySQL port
-- `{{.GoVersion}}` - Go version requirement
-- `{{.WithRedis}}` - Include Redis (boolean)
-- `{{.WithKafka}}` - Include Kafka (boolean)
+This major release removes complexity while keeping productivity:
 
-## Troubleshooting
+**Removed:**
+- ❌ Dependency injection (samber/do)
+- ❌ Viper configuration system
+- ❌ Multi-layer architecture (DTO → Service → Repository)
+- ❌ Interactive prompts
+- ❌ Optional Redis/Kafka flags (now always included)
 
-**Q: Generated project doesn't compile**
+**Changed:**
+- ✅ Handlers directly use SQLC models
+- ✅ Simple godotenv configuration
+- ✅ Flattened project structure
+- ✅ Flag-only CLI interface
+- ✅ Always includes MySQL + Redis + Kafka
 
-A: Run `go mod tidy` in the generated project directory. If using sqlc, also run `make sqlc-generate` to generate the database code.
+**Benefits:**
+- 53% fewer template files (34 → 16)
+- Reduced dependencies (10+ → 4)
+- Less boilerplate code
+- Easier to understand and extend
+- Faster project generation
 
-**Q: Docker services won't start**
+### Migration from v2.x
 
-A: Check if ports are already in use:
-```bash
-lsof -i :8080   # Application
-lsof -i :3306   # MySQL
-lsof -i :6379   # Redis
-lsof -i :9092   # Kafka
-```
+Projects generated with v2.x will continue to work. New projects use the simplified v3.0 structure.
 
-**Q: Migrations fail**
-
-A: Ensure MySQL is running (`docker-compose ps`) and check connection settings in `config.toml` or environment variables.
-
-**Q: sqlc generation fails**
-
-A: Make sure sqlc is installed: `go install github.com/sqlc-dev/sqlc/cmd/sqlc@latest`
-
-**Q: "no Go files" error when building**
-
-A: The main.go file is in `cmd/server/`. Build with: `go build -o app ./cmd/server`
-
-## What's New in v2.0.0
-
-### Dependency Injection with samber/do
-
-This major release introduces **type-safe dependency injection** using [samber/do](https://do.samber.dev/):
-
-**Key Improvements:**
-- ✨ **60% Less Boilerplate**: Automatic dependency resolution replaces manual wiring
-- 🔄 **Automatic Lifecycle**: Built-in graceful shutdown and health checks
-- 🎯 **Type-Safe**: Uses Go 1.18+ generics (no reflection)
-- 🧪 **Easy Testing**: Simple mocking with `do.Override`
-- 📦 **Industry Standard**: Based on proven DI patterns
-
-**Breaking Changes:**
-
-All constructors now use the `do.Provider` pattern:
-
-```go
-// Old (v1.x)
-func NewUserHandler(service UserService) *UserHandler
-
-// New (v2.0)
-func NewUserHandler(i do.Injector) (*UserHandler, error)
-```
-
-Generated projects automatically wire dependencies via DI container. See [CHANGELOG.md](CHANGELOG.md) for full migration guide.
-
----
-
-## What's New in v1.1.0
-
-### Viper Configuration Integration
-
-This release introduces **Viper** for configuration management, replacing the previous manual implementation:
-
-**Key Improvements:**
-- ✨ **Simpler Code**: Configuration code reduced by ~60% (106 lines vs 266 lines)
-- 🔄 **Automatic Env Var Binding**: No more manual environment variable parsing
-- 🐳 **Better Docker Support**: Environment variables now work seamlessly in containers
-- 🎯 **Default Values**: All config keys have sensible defaults
-- 📦 **Industry Standard**: Using the widely-adopted Viper library
-
-**Breaking Change - Environment Variable Naming:**
-
-Environment variables now follow a consistent `DATABASE_*` naming convention:
-
-```bash
-# ❌ Old (v1.0.0)
-DB_HOST=localhost
-DB_PORT=3306
-DB_USER=appuser
-
-# ✅ New (v1.1.0)
-DATABASE_HOST=localhost
-DATABASE_PORT=3306
-DATABASE_USER=appuser
-```
-
-**Migration:** Existing projects can update their `.env` files to use the new naming, or regenerate with the latest CLI version. See [CHANGELOG.md](CHANGELOG.md) for detailed migration instructions.
+To upgrade existing projects:
+1. Keep your existing project as-is
+2. Generate a new project with v3.0
+3. Copy your business logic to the new structure
 
 ## Contributing
 
@@ -567,7 +355,7 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 
 1. Fork the repository
 2. Create your feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add some amazing feature'`)
+3. Commit your changes (`git commit -m 'Add some amazing-feature'`)
 4. Push to the branch (`git push origin feature/amazing-feature`)
 5. Open a Pull Request
 
@@ -581,4 +369,4 @@ Muaz - [@muazwzxv](https://github.com/muazwzxv)
 
 ---
 
-**Built with Go. Ready to scale.**
+**Built with Go. Ready to code.**
