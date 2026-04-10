@@ -49,11 +49,9 @@ func (g *ProjectGenerator) Generate() error {
 	}
 
 	// Initialize git repository
-	if !g.config.SkipGit {
-		fmt.Println("🔀 Initializing git repository...")
-		if err := g.initGit(projectPath); err != nil {
-			fmt.Printf("⚠️  Warning: failed to initialize git: %v\n", err)
-		}
+	fmt.Println("🔀 Initializing git repository...")
+	if err := g.initGit(projectPath); err != nil {
+		fmt.Printf("⚠️  Warning: failed to initialize git: %v\n", err)
 	}
 
 	// Download dependencies
@@ -70,18 +68,14 @@ func (g *ProjectGenerator) Generate() error {
 func (g *ProjectGenerator) createDirectoryStructure(projectPath string) error {
 	dirs := []string{
 		projectPath,
-		filepath.Join(projectPath, "cmd", "server"),
+		filepath.Join(projectPath, "cmd", "api"),
 		filepath.Join(projectPath, "internal", "config"),
-		filepath.Join(projectPath, "internal", "database", "migrations"),
-		filepath.Join(projectPath, "internal", "database", "query"),
-		filepath.Join(projectPath, "internal", "database", "store"),
-		filepath.Join(projectPath, "internal", "entity"),
-		filepath.Join(projectPath, "internal", "dto", "request"),
-		filepath.Join(projectPath, "internal", "dto", "response"),
+		filepath.Join(projectPath, "internal", "handlers", g.config.SampleAPINameLower),
+		filepath.Join(projectPath, "internal", "response"),
+		filepath.Join(projectPath, "internal", "models"),
 		filepath.Join(projectPath, "internal", "repository"),
-		filepath.Join(projectPath, "internal", "service", g.config.SampleAPINameLower),
-		filepath.Join(projectPath, "internal", "handler", "health"),
-		filepath.Join(projectPath, "internal", "handler", g.config.SampleAPINameLower),
+		filepath.Join(projectPath, "database", "migrations"),
+		filepath.Join(projectPath, "database", "queries"),
 	}
 
 	for _, dir := range dirs {
@@ -101,54 +95,27 @@ func (g *ProjectGenerator) generateFiles(projectPath string) error {
 		template string
 		output   string
 	}{
-		// Root level files
-		{"project/main.go.tmpl", filepath.Join(projectPath, "cmd", "server", "main.go")},
-		{"project/Dockerfile.tmpl", filepath.Join(projectPath, "Dockerfile")},
-		{"project/docker-compose.yml.tmpl", filepath.Join(projectPath, "docker-compose.yml")},
-		{"project/Makefile.tmpl", filepath.Join(projectPath, "Makefile")},
-		{"project/config.toml.tmpl", filepath.Join(projectPath, "config.toml")},
-		{"project/.env.docker.tmpl", filepath.Join(projectPath, ".env.docker")},
-		{"project/.env.example.tmpl", filepath.Join(projectPath, ".env.example")},
-		{"project/.gitignore.tmpl", filepath.Join(projectPath, ".gitignore")},
-		{"project/README.md.tmpl", filepath.Join(projectPath, "README.md")},
-
-		// Internal files
-		{"internal/application.go.tmpl", filepath.Join(projectPath, "internal", "application.go")},
+		// Go source files
+		{"cmd/api/main.go.tmpl", filepath.Join(projectPath, "cmd", "api", "main.go")},
+		{"cmd/service.go.tmpl", filepath.Join(projectPath, "cmd", "service.go")},
 		{"internal/config/config.go.tmpl", filepath.Join(projectPath, "internal", "config", "config.go")},
-		{"internal/database/database.go.tmpl", filepath.Join(projectPath, "internal", "database", "database.go")},
-		{"internal/database/sqlc.yaml.tmpl", filepath.Join(projectPath, "internal", "database", "sqlc.yaml")},
-		{"internal/database/migrations/migration.sql.tmpl", filepath.Join(projectPath, "internal", "database", "migrations", "001_create_initial_schema.sql")},
-		{"internal/database/query/sample.sql.tmpl", filepath.Join(projectPath, "internal", "database", "query", g.config.SampleAPINameLower+".sql")},
-		{"internal/database/store/.gitignore.tmpl", filepath.Join(projectPath, "internal", "database", "store", ".gitignore")},
-		{"internal/database/store/db.go.tmpl", filepath.Join(projectPath, "internal", "database", "store", "db.go")},
-		{"internal/database/store/models.go.tmpl", filepath.Join(projectPath, "internal", "database", "store", "models.go")},
-		{"internal/database/store/querier.go.tmpl", filepath.Join(projectPath, "internal", "database", "store", "querier.go")},
-		{"internal/database/store/sample.sql.go.tmpl", filepath.Join(projectPath, "internal", "database", "store", g.config.SampleAPINameLower+".sql.go")},
+		{"internal/handlers/handler.go.tmpl", filepath.Join(projectPath, "internal", "handlers", "handler.go")},
+		{"internal/handlers/sample/sample_handler.go.tmpl", filepath.Join(projectPath, "internal", "handlers", g.config.SampleAPINameLower, "handler.go")},
+		{"internal/response/response.go.tmpl", filepath.Join(projectPath, "internal", "response", "response.go")},
+		{"internal/models/db.go.tmpl", filepath.Join(projectPath, "internal", "models", "db.go")},
+		{"internal/repository/db.go.tmpl", filepath.Join(projectPath, "internal", "repository", "db.go")},
 
-		// Entity
-		{"internal/entity/entity.go.tmpl", filepath.Join(projectPath, "internal", "entity", g.config.SampleAPINameLower+".go")},
+		// Database files
+		{"database/migrations/init.sql.tmpl", filepath.Join(projectPath, "database", "migrations", "00001_init.sql")},
+		{"database/queries/sample.sql.tmpl", filepath.Join(projectPath, "database", "queries", g.config.SampleAPINameLower+".sql")},
 
-		// DTO
-		{"internal/dto/request/common.go.tmpl", filepath.Join(projectPath, "internal", "dto", "request", "common.go")},
-		{"internal/dto/request/sample_request.go.tmpl", filepath.Join(projectPath, "internal", "dto", "request", g.config.SampleAPINameLower+"_request.go")},
-		{"internal/dto/response/common.go.tmpl", filepath.Join(projectPath, "internal", "dto", "response", "common.go")},
-		{"internal/dto/response/error_response.go.tmpl", filepath.Join(projectPath, "internal", "dto", "response", "error_response.go")},
-		{"internal/dto/response/sample_response.go.tmpl", filepath.Join(projectPath, "internal", "dto", "response", g.config.SampleAPINameLower+"_response.go")},
-
-		// Repository
-		{"internal/repository/errors.go.tmpl", filepath.Join(projectPath, "internal", "repository", "errors.go")},
-		{"internal/repository/interfaces.go.tmpl", filepath.Join(projectPath, "internal", "repository", "interfaces.go")},
-		{"internal/repository/sample_repository.go.tmpl", filepath.Join(projectPath, "internal", "repository", g.config.SampleAPINameLower+"_repository.go")},
-
-		// Service
-		{"internal/service/sample/sample.go.tmpl", filepath.Join(projectPath, "internal", "service", g.config.SampleAPINameLower, g.config.SampleAPINameLower+".go")},
-		{"internal/service/sample/create_sample_service.go.tmpl", filepath.Join(projectPath, "internal", "service", g.config.SampleAPINameLower, "create_"+g.config.SampleAPINameLower+"_service.go")},
-
-		// Handler
-		{"internal/handler/health/health_handler.go.tmpl", filepath.Join(projectPath, "internal", "handler", "health", "health_handler.go")},
-		{"internal/handler/middleware.go.tmpl", filepath.Join(projectPath, "internal", "handler", "middleware.go")},
-		{"internal/handler/sample/sample_handler.go.tmpl", filepath.Join(projectPath, "internal", "handler", g.config.SampleAPINameLower, g.config.SampleAPINameLower+"_handler.go")},
-		{"internal/handler/sample/create_sample_handler.go.tmpl", filepath.Join(projectPath, "internal", "handler", g.config.SampleAPINameLower, "create_"+g.config.SampleAPINameLower+"_handler.go")},
+		// Project config files
+		{"project/docker-compose.yml.tmpl", filepath.Join(projectPath, "docker-compose.yml")},
+		{"project/Dockerfile.tmpl", filepath.Join(projectPath, "Dockerfile")},
+		{"project/Makefile.tmpl", filepath.Join(projectPath, "Makefile")},
+		{"project/sqlc.yaml.tmpl", filepath.Join(projectPath, "sqlc.yaml")},
+		{"project/.env.example.tmpl", filepath.Join(projectPath, ".env.example")},
+		{"project/README.md.tmpl", filepath.Join(projectPath, "README.md")},
 	}
 
 	for _, file := range files {

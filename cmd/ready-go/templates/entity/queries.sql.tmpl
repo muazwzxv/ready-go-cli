@@ -1,0 +1,17 @@
+-- name: Get{{.EntityName}} :one
+SELECT * FROM {{.TableName}} WHERE id = ?;
+
+-- name: List{{.EntityName}}s :many
+SELECT * FROM {{.TableName}} ORDER BY created_at DESC;
+
+-- name: Create{{.EntityName}} :execresult
+INSERT INTO {{.TableName}} (name, status, created_at, updated_at)
+VALUES (?, ?, NOW(), NOW());
+
+-- name: Update{{.EntityName}} :exec
+UPDATE {{.TableName}}
+SET name = ?, status = ?, updated_at = NOW()
+WHERE id = ?;
+
+-- name: Delete{{.EntityName}} :exec
+DELETE FROM {{.TableName}} WHERE id = ?;
