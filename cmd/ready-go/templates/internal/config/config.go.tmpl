@@ -3,6 +3,7 @@ package config
 import (
 	"fmt"
 	"os"
+	"time"
 
 	"github.com/joho/godotenv"
 )
@@ -18,6 +19,11 @@ type Config struct {
 	RedisPort  string
 	KafkaHost  string
 	KafkaPort  string
+
+	// Timeouts
+	ReadTimeout  time.Duration
+	WriteTimeout time.Duration
+	IdleTimeout  time.Duration
 }
 
 func Load() (*Config, error) {
@@ -34,6 +40,11 @@ func Load() (*Config, error) {
 		RedisPort:  getEnv("REDIS_PORT", "6379"),
 		KafkaHost:  getEnv("KAFKA_HOST", "localhost"),
 		KafkaPort:  getEnv("KAFKA_PORT", "9092"),
+
+		// Timeouts with defaults
+		ReadTimeout:  parseDuration(getEnv("READ_TIMEOUT", "5s")),
+		WriteTimeout: parseDuration(getEnv("WRITE_TIMEOUT", "10s")),
+		IdleTimeout:  parseDuration(getEnv("IDLE_TIMEOUT", "0")),
 	}, nil
 }
 
@@ -55,4 +66,12 @@ func getEnv(key, defaultValue string) string {
 		return value
 	}
 	return defaultValue
+}
+
+func parseDuration(s string) time.Duration {
+	d, err := time.ParseDuration(s)
+	if err != nil {
+		return 0
+	}
+	return d
 }

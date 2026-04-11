@@ -3,7 +3,7 @@ package util
 import (
 	"errors"
 
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 )
 
 type ErrorResponse struct {
@@ -31,7 +31,7 @@ func BuildErrorWithCode(httpCode int, message, code string) error {
 	}
 }
 
-func HandleError(c *fiber.Ctx, err error) error {
+func HandleError(c fiber.Ctx, err error) error {
 	var e *ErrorResponse
 	if errors.As(err, &e) {
 		return c.Status(e.HttpCode).JSON(e)
