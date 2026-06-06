@@ -91,31 +91,47 @@ func (g *ProjectGenerator) createDirectoryStructure(projectPath string) error {
 func (g *ProjectGenerator) generateFiles(projectPath string) error {
 	renderer := NewTemplateRenderer(g.config)
 
+	// Router-specific template prefix
+	routerPrefix := g.config.TemplateDir()
+
 	files := []struct {
 		template string
 		output   string
 	}{
-		// Go source files
-		{"cmd/api/main.go.tmpl", filepath.Join(projectPath, "cmd", "api", "main.go")},
-		{"cmd/service.go.tmpl", filepath.Join(projectPath, "cmd", "service.go")},
-		{"internal/config/config.go.tmpl", filepath.Join(projectPath, "internal", "config", "config.go")},
-		{"internal/handlers/handler.go.tmpl", filepath.Join(projectPath, "internal", "handlers", "handler.go")},
-		{"internal/handlers/sample/sample_handler.go.tmpl", filepath.Join(projectPath, "internal", "handlers", g.config.SampleAPINameLower, "handler.go")},
-		{"internal/handlers/util/util.go.tmpl", filepath.Join(projectPath, "internal", "handlers", "util", "util.go")},
-		{"internal/models/db.go.tmpl", filepath.Join(projectPath, "internal", "models", "db.go")},
-		{"internal/repository/db.go.tmpl", filepath.Join(projectPath, "internal", "repository", "db.go")},
+		// Router-specific Go source files
+		{filepath.Join(routerPrefix, "cmd/api/main.go.tmpl"), filepath.Join(projectPath, "cmd", "api", "main.go")},
+		{filepath.Join(routerPrefix, "internal/handlers/handler.go.tmpl"), filepath.Join(projectPath, "internal", "handlers", "handler.go")},
+		{filepath.Join(routerPrefix, "internal/handlers/sample/sample_handler.go.tmpl"), filepath.Join(projectPath, "internal", "handlers", g.config.SampleAPINameLower, "handler.go")},
+		{filepath.Join(routerPrefix, "internal/handlers/util/util.go.tmpl"), filepath.Join(projectPath, "internal", "handlers", "util", "util.go")},
+
+		// Shared Go source files
+		{"shared/cmd/service.go.tmpl", filepath.Join(projectPath, "cmd", "service.go")},
+		{"shared/internal/config/config.go.tmpl", filepath.Join(projectPath, "internal", "config", "config.go")},
+		{"shared/internal/models/db.go.tmpl", filepath.Join(projectPath, "internal", "models", "db.go")},
+		{"shared/internal/repository/db.go.tmpl", filepath.Join(projectPath, "internal", "repository", "db.go")},
 
 		// Database files
-		{"database/migrations/init.sql.tmpl", filepath.Join(projectPath, "database", "migrations", "00001_init.sql")},
-		{"database/queries/sample.sql.tmpl", filepath.Join(projectPath, "database", "queries", g.config.SampleAPINameLower+".sql")},
+		{"shared/database/migrations/init.sql.tmpl", filepath.Join(projectPath, "database", "migrations", "00001_init.sql")},
+		{"shared/database/queries/sample.sql.tmpl", filepath.Join(projectPath, "database", "queries", g.config.SampleAPINameLower+".sql")},
 
 		// Project config files
-		{"project/docker-compose.yml.tmpl", filepath.Join(projectPath, "docker-compose.yml")},
-		{"project/Dockerfile.tmpl", filepath.Join(projectPath, "Dockerfile")},
-		{"project/Makefile.tmpl", filepath.Join(projectPath, "Makefile")},
-		{"project/sqlc.yaml.tmpl", filepath.Join(projectPath, "sqlc.yaml")},
-		{"project/.env.example.tmpl", filepath.Join(projectPath, ".env.example")},
-		{"project/README.md.tmpl", filepath.Join(projectPath, "README.md")},
+		{"shared/project/docker-compose.yml.tmpl", filepath.Join(projectPath, "docker-compose.yml")},
+		{"shared/project/Dockerfile.tmpl", filepath.Join(projectPath, "Dockerfile")},
+		{"shared/project/Makefile.tmpl", filepath.Join(projectPath, "Makefile")},
+		{"shared/project/sqlc.yaml.tmpl", filepath.Join(projectPath, "sqlc.yaml")},
+		{"shared/project/.env.example.tmpl", filepath.Join(projectPath, ".env.example")},
+		{"shared/project/README.md.tmpl", filepath.Join(projectPath, "README.md")},
+	}
+
+	// Chi-specific extra files
+	if g.config.Router == "chi" {
+		files = append(files, struct {
+			template string
+			output   string
+		}{
+			template: filepath.Join(routerPrefix, "internal/handlers/util/json.go.tmpl"),
+			output:   filepath.Join(projectPath, "internal", "handlers", "util", "json.go"),
+		})
 	}
 
 	for _, file := range files {

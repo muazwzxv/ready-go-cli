@@ -1,0 +1,61 @@
+package main
+
+import (
+	"context"
+	"fmt"
+	"log"
+	"log/slog"
+	"net/http"
+	"os"
+
+	"github.com/go-chi/chi/v5"
+	"{{.ModuleName}}/cmd"
+	"{{.ModuleName}}/internal/config"
+	"{{.ModuleName}}/internal/handlers"
+	"{{.ModuleName}}/internal/models"
+	"{{.ModuleName}}/internal/repository"
+)
+
+func main() {
+	cfg, err := config.Load()
+	if err != nil {
+		log.Fatalf("Failed to load config: %v", err)
+	}
+
+	db, err := repository.NewDB(cfg)
+	if err != nil {
+		log.Fatalf("Failed to connect to database: %v", err)
+	}
+	defer db.Close()
+
+	redisClient, err := repository.NewRedis(cfg)
+	if err != nil {
+		log.Fatalf("Failed to connect to redis: %v", err)
+	}
+	defer redisClient.Close()
+
+	apiService := &cmd.APIService{
+		DB:      db,
+		Queries: models.New(),
+		Redis:   redisClient,
+	}
+
+	router := chi.NewRouter()
+
+	bootupCtx := context.Background()
+	handlers.SetupHandler(bootupCtx, router, apiService)
+
+	server := &http.Server{
+		Addr:         ":" + cfg.ServerPort,
+		Handler:      router,
+		ReadTimeout:  cfg.ReadTimeout,
+		WriteTimeout: cfg.WriteTimeout,
+		IdleTimeout:  cfg.IdleTimeout,
+	}
+
+	slog.InfoContext(bootupCtx, fmt.Sprintf("Server starting on port %s", cfg.ServerPort))
+	if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+		slog.ErrorContext(bootupCtx, fmt.Sprintf("Failed to start server: %v", err))
+		os.Exit(1)
+	}
+}

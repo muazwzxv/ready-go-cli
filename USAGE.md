@@ -1,419 +1,155 @@
-# Ready-Go CLI - Quick Start Guide
+# Ready-Go CLI - Usage Guide
 
-**Version**: v2.0.0  
-**Latest Update**: December 11, 2025
+**Version**: v3.x.x
 
-A command-line tool to instantly create production-ready Go projects with clean architecture and type-safe dependency injection.
+A command-line tool to scaffold production-ready Go projects with Fiber v3 or Chi, SQLC, and clean architecture.
 
 ## Installation
 
-The `ready-go` binary is already installed at:
 ```bash
-~/go/bin/ready-go
-```
+# Install from source
+go install github.com/muazwzxv/ready-go-cli/cmd/ready-go@latest
 
-Make sure `~/go/bin` is in your PATH.
+# Or clone and build
+git clone https://github.com/muazwzxv/ready-go-cli.git
+cd ready-go-cli
+go build -o ready-go ./cmd/ready-go
+```
 
 ## Quick Start
 
-Create a new project in 3 steps:
+### Fiber (default)
 
 ```bash
-# 1. Create project
-ready-go new --module github.com/mycompany/my-api --sample-api Product my-api
-
-# 2. Navigate and start services
-cd my-api && make up
-
-# 3. Run migrations and start app
-make migrate-up && make run
-```
-
-Your API is now running at `http://localhost:8080`! 🚀
-
-## Basic Usage
-
-### Create a Simple Project
-```bash
-ready-go new blog-api
-```
-This creates a project with default settings:
-- Module: `github.com/username/blog-api`
-- Sample API: User CRUD operations
-- Includes: MySQL, Redis, Kafka
-
-### Create with Custom Settings
-```bash
-ready-go new \
-  --module github.com/mycompany/shop \
-  --sample-api Product \
-  --author "Your Name" \
-  shop-api
-```
-
-### Create Without Kafka/Redis
-```bash
-ready-go new \
-  --module github.com/me/simple-api \
-  --with-kafka=false \
-  --with-redis=false \
-  simple-api
-```
-
-## Command Options
-
-```bash
-ready-go new [options] <project-name>
-```
-
-**Important:** Flags/options must come before the project name.
-
-### Available Options
-
-| Option | Short | Default | Description |
-|--------|-------|---------|-------------|
-| `--module` | `-m` | `github.com/username/<name>` | Your Go module path |
-| `--sample-api` | | `User` | Name of entity (Product, Order, etc.) |
-| `--author` | | Empty | Your name for documentation |
-| `--description` | `-d` | Auto-generated | Project description |
-| `--output` | `-o` | `.` | Where to create the project |
-| `--with-redis` | | `true` | Include Redis in Docker |
-| `--with-kafka` | | `true` | Include Kafka in Docker |
-| `--skip-git` | | `false` | Don't initialize git repo |
-| `--interactive` | `-i` | `false` | Interactive setup mode |
-
-## What You Get
-
-Every generated project includes:
-
-### 🏗️ Clean Architecture
-- **Entity Layer**: Domain models with business logic
-- **DTO Layer**: Request/response objects
-- **Repository Layer**: Database operations
-- **Service Layer**: Business logic
-- **Handler Layer**: HTTP API endpoints
-
-### 💉 Dependency Injection (NEW in v2.0)
-- **Type-safe DI**: Uses samber/do v2 (zero reflection)
-- **Automatic resolution**: No manual dependency wiring
-- **Lifecycle management**: Built-in shutdown/health checks
-- **Easy testing**: `do.Override` for mocking dependencies
-
-### 🐳 Docker Environment
-- MySQL 8.0 database
-- Redis cache (optional)
-- Kafka + UI (optional)
-- Pre-configured docker-compose.yml
-
-### 🔧 Development Tools
-- **Makefile** with common commands
-- **Database migrations** with goose
-- **Configuration** via ENV/TOML/Defaults
-- **Health checks** at /health, /ready, /live
-
-### 📝 API Endpoints
-
-For a "Product" entity, you automatically get:
-
-```
-POST   /api/v1/products              # Create product
-GET    /api/v1/products/:id          # Get product
-PUT    /api/v1/products/:id          # Update product
-DELETE /api/v1/products/:id          # Delete product
-GET    /api/v1/products              # List with pagination
-POST   /api/v1/products/bulk-update-status
-GET    /api/v1/products/stats        # Statistics
-```
-
-## Working with Generated Projects
-
-### Start Development
-
-```bash
-cd your-project
-
-# Start all services (MySQL, Redis, Kafka)
-make up
-
-# Run database migrations
+ready-go new my-api --module github.com/mycompany/my-api
+cd my-api
+make docker-up
 make migrate-up
-
-# Start the application
-make run
+make sqlc-generate
+make run-api
 ```
 
-### Available Make Commands
+### Chi
 
 ```bash
-make up              # Start Docker services
-make down            # Stop Docker services
-make migrate-up      # Run migrations
-make migrate-down    # Rollback migrations
-make run             # Run application
-make build           # Build binary
-make test            # Run tests
-make lint            # Run linter
-make clean           # Clean artifacts
-make logs            # View service logs
+ready-go new my-api --module github.com/mycompany/my-api --router=chi
+cd my-api
+make docker-up
+make migrate-up
+make sqlc-generate
+make run-api
 ```
 
-### Configuration
+## Commands
 
-Projects support 3 configuration layers:
+### `ready-go new <project-name> [flags]`
 
-1. **Environment variables** (highest priority)
-   ```bash
-   export DATABASE_HOST=localhost
-   export DATABASE_PORT=3306
-   export SERVER_PORT=8080
-   ```
+Scaffold a new Go project.
 
-2. **config.toml file**
-   ```toml
-   [database]
-   host = "localhost"
-   port = 3306
-   
-   [server]
-   port = 8080
-   ```
+| Flag | Short | Default | Description |
+|------|-------|---------|-------------|
+| `--module` | `-m` | `github.com/username/<name>` | Go module path |
+| `--router` | `-r` | `fiber` | HTTP router: `fiber` or `chi` |
+| `--port` | | `8080` | Server port |
+| `--db-port` | | `3306` | MySQL port |
+| `--redis-port` | | `6379` | Redis port |
+| `--kafka-port` | | `9092` | Kafka port |
+| `--sample-name` | | `User` | Sample entity name |
 
-3. **Default values** (fallback)
+### `ready-go add entity <EntityName>`
 
-### Dependency Injection (v2.0+)
+Add a new entity to an existing project. Works identically for both Fiber and Chi projects.
 
-All dependencies are managed via samber/do v2:
-
-```go
-// Application initializes DI container
-type Application struct {
-    config   *config.Config
-    injector do.Injector
-}
-
-// Services are registered as providers
-do.Provide(injector, NewDatabase)
-do.Provide(injector, NewUserService)
-do.Provide(injector, NewUserHandler)
-
-// Dependencies resolved automatically
-service := do.MustInvoke[Service](injector)
+```bash
+ready-go add entity Product
 ```
 
-**Benefits:**
-- **Type-safe**: Compile-time dependency checking
-- **No boilerplate**: Automatic dependency wiring
-- **Lifecycle**: Built-in shutdown/health management
-- **Testable**: Easy mocking with `do.Override`
+Creates:
+- `internal/entity/product.go`
+- `database/migrations/xxx_create_products.sql`
+- `database/queries/product.sql`
 
-Learn more: [samber/do documentation](https://github.com/samber/do)
-
-### Project Structure
+## Generated Project Structure
 
 ```
-your-project/
-├── cmd/server/main.go           # Entry point
+my-api/
+├── cmd/
+│   ├── api/
+│   │   └── main.go
+│   └── service.go
 ├── internal/
-│   ├── application.go          # App setup
-│   ├── config/                 # Configuration
-│   ├── database/               # DB + migrations
-│   ├── entity/                 # Domain models
-│   ├── dto/                    # Request/Response
-│   ├── repository/             # Data access
-│   ├── service/                # Business logic
-│   └── handler/                # HTTP handlers
-├── docker-compose.yml          # Services
-├── Dockerfile                  # App container
-├── Makefile                    # Commands
-└── config.toml                 # Config file
+│   ├── config/
+│   ├── handlers/
+│   ├── models/
+│   └── repository/
+├── database/
+│   ├── migrations/
+│   └── queries/
+├── docker-compose.yml
+├── Dockerfile
+├── Makefile
+├── sqlc.yaml
+└── .env.example
 ```
 
-## Examples
-
-### E-commerce Product API
-```bash
-ready-go new \
-  --module github.com/myshop/products \
-  --sample-api Product \
-  --author "Shop Team" \
-  product-service
-```
-
-### User Management Service
-```bash
-ready-go new \
-  --module github.com/mycompany/users \
-  --sample-api User \
-  user-service
-```
-
-### Lightweight Microservice (No Kafka/Redis)
-```bash
-ready-go new \
-  --module github.com/store/orders \
-  --sample-api Order \
-  --with-kafka=false \
-  --with-redis=false \
-  orders-api
-```
-
-### Interactive Setup
-```bash
-ready-go new -i my-project
-# Follow the prompts to configure your project
-```
-
-## Testing Your API
-
-Once your app is running, test it:
+## Make Commands
 
 ```bash
-# Health check
-curl http://localhost:8080/health
-
-# Create a record (e.g., Product)
-curl -X POST http://localhost:8080/api/v1/products \
-  -H "Content-Type: application/json" \
-  -d '{"name":"Laptop","description":"Gaming laptop","status":"active"}'
-
-# List records
-curl http://localhost:8080/api/v1/products
-
-# Get stats
-curl http://localhost:8080/api/v1/products/stats
+make docker-up        # Start MySQL, Redis, Kafka
+make docker-down      # Stop services
+make migrate-up       # Run migrations
+make migrate-down     # Rollback migrations
+make migrate-create   # Create new migration
+make sqlc-generate    # Generate SQLC models
+make run-api          # Run dev server
+make build-api        # Build binary
 ```
 
-## Troubleshooting
+## Configuration
 
-### Port Already in Use
+Projects use environment variables (with `.env` file support via godotenv):
+
 ```bash
-# Check what's using the port
-lsof -i :8080
-
-# Or change port in config.toml
-[server]
-port = 9090
+DB_HOST=localhost
+DB_PORT=3306
+DB_USER=myapi_user
+DB_PASSWORD=myapi_pass
+DB_NAME=myapi_db
+SERVER_PORT=8080
+REDIS_HOST=localhost
+REDIS_PORT=6379
+KAFKA_HOST=localhost
+KAFKA_PORT=9092
+READ_TIMEOUT=5s
+WRITE_TIMEOUT=10s
+IDLE_TIMEOUT=0s
 ```
 
-### Database Connection Failed
-```bash
-# Make sure MySQL is running
-docker ps | grep mysql
+## Router Choice
 
-# Check connection in config.toml or .env.docker
-```
+| | Fiber (default) | Chi |
+|---|---|---|
+| Handler signature | `func(c fiber.Ctx) error` | `func(w http.ResponseWriter, r *http.Request)` |
+| JSON helper | `c.JSON(v)` | `util.WriteJSON(w, code, v)` |
+| Param binding | `c.Bind().URI(&params)` | `chi.URLParam(r, "id")` + parse |
+| Middleware | `fiber.Handler` | `func(next http.Handler) http.Handler` |
+| Dependencies | More | Minimal (chi + stdlib) |
 
-### Dependencies Not Downloaded
-```bash
-cd your-project
-go mod tidy
-```
+## Requirements
 
-## Tips
-
-1. **Customize Entity**: Use `--sample-api` to set your domain model name
-2. **Module Path**: Always use your GitHub/GitLab username in `--module`
-3. **Git Init**: Projects auto-initialize git (use `--skip-git` to disable)
-4. **Docker First**: Always run `make up` before `make run`
-5. **Migrations**: Run `make migrate-up` after starting Docker services
+- Go 1.23+
+- Docker & Docker Compose
+- sqlc: `go install github.com/sqlc-dev/sqlc/cmd/sqlc@latest`
+- goose: `go install github.com/pressly/goose/v3/cmd/goose@latest`
 
 ## Getting Help
 
 ```bash
-# Show help
 ready-go --help
-
-# Show version
-ready-go --version
-
-# Command help
 ready-go new --help
+ready-go add entity --help
 ```
-
-## Next Steps
-
-After generating a project:
-
-1. **Review** the generated README.md in your project
-2. **Customize** entity fields in `internal/entity/`
-3. **Add** more endpoints in handlers
-4. **Write** tests for your business logic
-5. **Deploy** using the included Dockerfile
-
-## What's New in v2.0.0
-
-### 🎯 Major Breaking Change: Dependency Injection
-
-All generated projects now use **samber/do v2** for dependency injection:
-
-**Before (v1.x - Manual Dependencies):**
-```go
-type ApplicationContext struct {
-    Config   *config.Config
-    Database *database.Database
-    Services Services
-    Handlers Handlers
-}
-
-// Manual wiring required
-app.Services.UserService = service.NewUserService(app.Database)
-app.Handlers.UserHandler = handler.NewUserHandler(app.Services.UserService)
-```
-
-**After (v2.0 - Dependency Injection):**
-```go
-type Application struct {
-    config   *config.Config
-    injector do.Injector
-}
-
-// Automatic resolution
-do.Provide(injector, NewDatabase)
-do.Provide(injector, NewUserService)      // Dependencies auto-injected
-do.Provide(injector, NewUserHandler)       // Dependencies auto-injected
-```
-
-**Key Improvements:**
-- ✅ 60% less boilerplate code
-- ✅ Type-safe (compile-time errors, no reflection)
-- ✅ Automatic dependency resolution
-- ✅ Built-in lifecycle management (shutdown/health checks)
-- ✅ Easier testing (mock with `do.Override`)
-
-### Migration from v1.x
-
-If you have projects generated with v1.x, they will continue to work. To use v2.0:
-
-```bash
-# Install v2.0
-go install github.com/yourusername/ready-go-cli/cmd/ready-go@v2.0.0
-
-# Generate new project with DI
-ready-go new my-new-project
-```
-
-To stay on v1.x:
-```bash
-# Install v1.1.0
-go install github.com/yourusername/ready-go-cli/cmd/ready-go@v1.1.0
-```
-
-See [CHANGELOG.md](CHANGELOG.md) for complete migration guide.
-
----
-
-## Learn More
-
-- All projects follow **Clean Architecture** principles
-- **Dependency Injection** via samber/do v2 (type-safe, zero reflection)
-- Configuration uses **multi-source loading** (ENV → TOML → Defaults)
-- API uses **Fiber v2** framework
-- Database uses **sqlx** with MySQL
-- Includes **health checks** for Kubernetes/monitoring
-- **Lifecycle management** for graceful shutdown
 
 ---
 
 **Happy coding!** 🚀
-
-For issues or questions, check the project README.md or visit the repository.

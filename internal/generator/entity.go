@@ -52,7 +52,7 @@ func (g *EntityGenerator) generateEntityFile() error {
 	outputPath := filepath.Join(entityDir, g.config.EntityNameLower+".go")
 
 	err := RenderTemplateToFile(
-		"entity/entity.go.tmpl",
+		"shared/entity/entity.go.tmpl",
 		outputPath,
 		g.config.TemplateData(),
 	)
@@ -77,7 +77,7 @@ func (g *EntityGenerator) generateMigrationFile() error {
 	)
 
 	err := RenderTemplateToFile(
-		"entity/migration.sql.tmpl",
+		"shared/entity/migration.sql.tmpl",
 		outputPath,
 		g.config.TemplateData(),
 	)
@@ -99,7 +99,7 @@ func (g *EntityGenerator) generateQueriesFile() error {
 	)
 
 	err := RenderTemplateToFile(
-		"entity/queries.sql.tmpl",
+		"shared/entity/queries.sql.tmpl",
 		outputPath,
 		g.config.TemplateData(),
 	)
