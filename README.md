@@ -1,10 +1,12 @@
 # Ready-Go CLI
 
-A CLI tool to scaffold production-ready Go projects with Fiber v3, SQLC, and a practical architecture.
+A CLI tool to scaffold production-ready Go projects with Fiber v3 or Chi, SQLC, and a practical architecture.
 
 ## Features
 
-- **Fiber v3**: Latest version with built-in timeout support and improved performance
+- **Router Choice**: Fiber v3 (default) or Chi — pick what fits your style
+- **Fiber v3**: Built-in timeout support, type-safe binding, and improved performance
+- **Chi v5**: Lightweight, idiomatic `net/http` with minimal dependencies
 - **Type-Safe SQL**: SQLC generates Go code from your SQL queries
 - **Clean Architecture**: Handlers → SQLC Models → Database (no unnecessary layers)
 - **Docker Ready**: MySQL, Redis, and Kafka pre-configured
@@ -27,6 +29,8 @@ mv ready-go ~/go/bin/
 
 ## Quick Start
 
+### Fiber (default)
+
 ```bash
 # Create a new project
 ready-go new my-api --module github.com/mycompany/my-api
@@ -48,6 +52,21 @@ make run-api
 
 Visit `http://localhost:8080`
 
+### Chi
+
+```bash
+# Create a new project with Chi
+ready-go new my-api --module github.com/mycompany/my-api --router=chi
+
+cd my-api
+
+# Same workflow as Fiber
+make docker-up
+make migrate-up
+make sqlc-generate
+make run-api
+```
+
 ## Usage
 
 ```bash
@@ -55,6 +74,7 @@ ready-go new <project-name> [flags]
 
 Flags:
   --module, -m    Go module path (default: github.com/username/<project>)
+  --router, -r    HTTP router (fiber or chi, default: fiber)
   --port          Server port (default: 8080)
   --db-port       MySQL port (default: 3306)
   --redis-port    Redis port (default: 6379)
@@ -62,13 +82,26 @@ Flags:
   --sample-name   Sample entity name (default: User)
 ```
 
+## Choosing a Router
+
+| | Fiber (default) | Chi |
+|---|---|---|
+| Handler signature | `func(c fiber.Ctx) error` | `func(w http.ResponseWriter, r *http.Request)` |
+| JSON helper | `c.JSON(v)` (built-in) | `util.WriteJSON(w, code, v)` (provided) |
+| Param binding | `c.Bind().URI(&params)` (type-safe) | `chi.URLParam(r, "id")` + manual parse |
+| Middleware | `fiber.Handler` with `c.Next()` | Standard `func(next http.Handler) http.Handler` |
+| Dependencies | More (fasthttp, etc.) | Minimal (just chi + stdlib) |
+| Best for | High throughput, Express-like API | Idiomatic Go, stdlib compatibility, embedding |
+
+Switching later is straightforward: the CLI scaffolds idiomatic code for each router, so you can regenerate or migrate manually.
+
 ## Generated Project Structure
 
 ```
 my-api/
 ├── cmd/
 │   ├── api/
-│   │   └── main.go              # Entry point with Fiber v3 config
+│   │   └── main.go              # Entry point with router setup
 │   └── service.go               # APIService with DB/Redis clients
 ├── internal/
 │   ├── config/
@@ -76,7 +109,8 @@ my-api/
 │   ├── handlers/
 │   │   ├── handler.go           # Setup + logging middleware
 │   │   ├── util/
-│   │   │   └── util.go          # Error/success helpers
+│   │   │   ├── util.go          # Error/success helpers
+│   │   │   └── json.go          # Chi only: WriteJSON helper
 │   │   └── user/
 │   │       └── handler.go       # Domain handler with Handle() method
 │   ├── models/                  # SQLC generated models
@@ -121,14 +155,14 @@ IDLE_TIMEOUT=0s
 
 ## Writing Handlers
 
-Example domain handler:
+### Fiber
 
 ```go
 package user
 
 import (
 	"database/sql"
-	
+
 	"github.com/gofiber/fiber/v3"
 	"github.com/redis/go-redis/v9"
 	"myapp/internal/handlers/util"
@@ -153,14 +187,58 @@ func (h *GetByIDHandler) Handle(c fiber.Ctx) error {
 			"INVALID_ID_FORMAT",
 		))
 	}
-	
+
 	// Pass c directly (implements context.Context)
 	user, err := h.Queries.GetUser(c, h.DB, int32(params.ID))
 	if err != nil {
 		return util.HandleError(c, err)
 	}
-	
+
 	return c.JSON(util.SuccessResponse{Data: user})
+}
+```
+
+### Chi
+
+```go
+package user
+
+import (
+	"database/sql"
+	"net/http"
+	"strconv"
+
+	"github.com/go-chi/chi/v5"
+	"github.com/redis/go-redis/v9"
+	"myapp/internal/handlers/util"
+	"myapp/internal/models"
+)
+
+type GetByIDHandler struct {
+	DB      *sql.DB
+	Queries *models.Queries
+	Redis   *redis.Client
+}
+
+func (h *GetByIDHandler) Handle(w http.ResponseWriter, r *http.Request) {
+	idStr := chi.URLParam(r, "id")
+	id, err := strconv.Atoi(idStr)
+	if err != nil {
+		util.HandleError(w, util.BuildErrorWithCode(
+			http.StatusBadRequest,
+			"Invalid ID format",
+			"INVALID_ID_FORMAT",
+		))
+		return
+	}
+
+	user, err := h.Queries.GetUser(r.Context(), h.DB, int32(id))
+	if err != nil {
+		util.HandleError(w, err)
+		return
+	}
+
+	util.WriteJSON(w, http.StatusOK, util.SuccessResponse{Data: user})
 }
 ```
 
@@ -201,11 +279,23 @@ Creates:
 - `database/migrations/xxx_create_products.sql` - Migration
 - `database/queries/product.sql` - SQLC queries
 
+> **Note:** The `add entity` command is router-agnostic. Entities work identically across both Fiber and Chi projects since they don't touch HTTP handler code.
+
 ## Error Handling
 
+**Fiber:**
 ```go
 return util.HandleError(c, util.BuildErrorWithCode(
 	fiber.StatusNotFound,
+	"User not found",
+	"USER_NOT_FOUND",
+))
+```
+
+**Chi:**
+```go
+util.HandleError(w, util.BuildErrorWithCode(
+	http.StatusNotFound,
 	"User not found",
 	"USER_NOT_FOUND",
 ))
@@ -242,7 +332,8 @@ make build-api        # Build binary
 
 ## Tech Stack
 
-- [Fiber v3](https://gofiber.io/) - Web framework
+- [Fiber v3](https://gofiber.io/) - Web framework (default)
+- [Chi v5](https://go-chi.io/) - Lightweight `net/http` router
 - [MySQL](https://www.mysql.com/) - Database
 - [SQLC](https://sqlc.dev/) - Type-safe SQL
 - [Goose](https://github.com/pressly/goose) - Migrations
@@ -254,6 +345,12 @@ make build-api        # Build binary
 We follow semantic versioning and are committed to backwards compatibility.
 
 **Promise:** All future versions will maintain backwards compatibility for generated projects. Your existing projects will continue to work when you regenerate or upgrade the CLI.
+
+### v3.1.0 - Chi Router Support
+- Added `--router` / `-r` flag to scaffold projects with Chi instead of Fiber
+- Chi projects use idiomatic `net/http` with custom JSON helpers
+- Full logging middleware parity across both routers
+- All existing features work identically regardless of router choice
 
 ### v3.0.1 - Fiber v3 Upgrade
 - Upgraded to Fiber v3 with built-in timeout support

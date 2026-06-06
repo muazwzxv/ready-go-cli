@@ -12,6 +12,7 @@ type ProjectConfig struct {
 	ModuleName         string
 	GoVersion          string
 	OutputDir          string
+	Router             string
 	SampleAPIName      string
 	SampleAPINameLower string
 	SampleAPINameUpper string
@@ -29,12 +30,18 @@ func NewProjectConfig(projectName string) *ProjectConfig {
 		ModuleName:    fmt.Sprintf("github.com/username/%s", projectName),
 		GoVersion:     "1.21",
 		OutputDir:     ".",
+		Router:        "fiber",
 		SampleAPIName: "User",
 		ServerPort:    "8080",
 		DBPort:        "3306",
 		RedisPort:     "6379",
 		KafkaPort:     "9092",
 	}
+}
+
+// TemplateDir returns the template directory prefix for the chosen router
+func (c *ProjectConfig) TemplateDir() string {
+	return c.Router
 }
 
 // Validate checks if the configuration is valid
@@ -54,6 +61,10 @@ func (c *ProjectConfig) Validate() error {
 
 	if c.SampleAPIName == "" {
 		return fmt.Errorf("sample API name cannot be empty")
+	}
+
+	if c.Router != "fiber" && c.Router != "chi" {
+		return fmt.Errorf("router must be either 'fiber' or 'chi'")
 	}
 
 	return nil

@@ -107,6 +107,12 @@ func NewCommand() *cli.Command {
 				Usage: "Sample entity name",
 				Value: "User",
 			},
+			&cli.StringFlag{
+				Name:    "router",
+				Aliases: []string{"r"},
+				Usage:   "HTTP router framework (fiber or chi)",
+				Value:   "fiber",
+			},
 		},
 		Action: newProjectAction,
 	}
@@ -140,6 +146,9 @@ func newProjectAction(c *cli.Context) error {
 	}
 	if c.IsSet("sample-name") {
 		cfg.SampleAPIName = c.String("sample-name")
+	}
+	if c.IsSet("router") {
+		cfg.Router = c.String("router")
 	}
 
 	cfg.Process()
