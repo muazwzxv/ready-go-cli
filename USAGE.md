@@ -21,7 +21,7 @@ go build -o ready-go ./cmd/ready-go
 ### Fiber (default)
 
 ```bash
-ready-go new my-api --module github.com/mycompany/my-api
+ready-go new --module github.com/mycompany/my-api my-api
 cd my-api
 make docker-up
 make migrate-up
@@ -32,7 +32,7 @@ make run-api
 ### Chi
 
 ```bash
-ready-go new my-api --module github.com/mycompany/my-api --router=chi
+ready-go new --router=chi --module github.com/mycompany/my-api my-api
 cd my-api
 make docker-up
 make migrate-up
@@ -42,7 +42,7 @@ make run-api
 
 ## Commands
 
-### `ready-go new <project-name> [flags]`
+### `ready-go new [flags] <project-name>`
 
 Scaffold a new Go project.
 

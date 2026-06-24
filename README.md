@@ -32,8 +32,8 @@ mv ready-go ~/go/bin/
 ### Fiber (default)
 
 ```bash
-# Create a new project
-ready-go new my-api --module github.com/mycompany/my-api
+# Create a new project (flags must come before the project name)
+ready-go new --module github.com/mycompany/my-api my-api
 
 cd my-api
 
@@ -56,7 +56,7 @@ Visit `http://localhost:8080`
 
 ```bash
 # Create a new project with Chi
-ready-go new my-api --module github.com/mycompany/my-api --router=chi
+ready-go new --router=chi --module github.com/mycompany/my-api my-api
 
 cd my-api
 
@@ -70,7 +70,7 @@ make run-api
 ## Usage
 
 ```bash
-ready-go new <project-name> [flags]
+ready-go new [flags] <project-name>
 
 Flags:
   --module, -m    Go module path (default: github.com/username/<project>)

@@ -75,7 +75,7 @@ func NewCommand() *cli.Command {
 	return &cli.Command{
 		Name:      "new",
 		Usage:     "Create a new Go project",
-		ArgsUsage: "<project-name>",
+		ArgsUsage: "[flags] <project-name>",
 		Flags: []cli.Flag{
 			&cli.StringFlag{
 				Name:    "module",
