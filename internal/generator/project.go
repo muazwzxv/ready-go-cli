@@ -74,6 +74,7 @@ func (g *ProjectGenerator) createDirectoryStructure(projectPath string) error {
 		filepath.Join(projectPath, "internal", "handlers", "util"),
 		filepath.Join(projectPath, "internal", "models"),
 		filepath.Join(projectPath, "internal", "repository"),
+		filepath.Join(projectPath, "internal", "telemetry"),
 		filepath.Join(projectPath, "database", "migrations"),
 		filepath.Join(projectPath, "database", "queries"),
 	}
@@ -109,6 +110,7 @@ func (g *ProjectGenerator) generateFiles(projectPath string) error {
 		{"shared/internal/config/config.go.tmpl", filepath.Join(projectPath, "internal", "config", "config.go")},
 		{"shared/internal/models/db.go.tmpl", filepath.Join(projectPath, "internal", "models", "db.go")},
 		{"shared/internal/repository/db.go.tmpl", filepath.Join(projectPath, "internal", "repository", "db.go")},
+		{"shared/internal/telemetry/telemetry.go.tmpl", filepath.Join(projectPath, "internal", "telemetry", "telemetry.go")},
 
 		// Database files
 		{"shared/database/migrations/init.sql.tmpl", filepath.Join(projectPath, "database", "migrations", "00001_init.sql")},
@@ -119,6 +121,7 @@ func (g *ProjectGenerator) generateFiles(projectPath string) error {
 		{"shared/project/Dockerfile.tmpl", filepath.Join(projectPath, "Dockerfile")},
 		{"shared/project/Makefile.tmpl", filepath.Join(projectPath, "Makefile")},
 		{"shared/project/sqlc.yaml.tmpl", filepath.Join(projectPath, "sqlc.yaml")},
+		{"shared/project/otel-collector-config.yaml", filepath.Join(projectPath, "otel-collector-config.yaml")},
 		{"shared/project/.env.example.tmpl", filepath.Join(projectPath, ".env.example")},
 		{"shared/project/README.md.tmpl", filepath.Join(projectPath, "README.md")},
 	}

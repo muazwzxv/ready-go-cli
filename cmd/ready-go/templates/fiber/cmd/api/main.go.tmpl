@@ -6,6 +6,7 @@ import (
 	"log"
 	"log/slog"
 	"os"
+	"time"
 
 	"github.com/gofiber/fiber/v3"
 	"{{.ModuleName}}/cmd"
@@ -13,6 +14,7 @@ import (
 	"{{.ModuleName}}/internal/handlers"
 	"{{.ModuleName}}/internal/models"
 	"{{.ModuleName}}/internal/repository"
+	"{{.ModuleName}}/internal/telemetry"
 )
 
 func main() {
@@ -20,6 +22,21 @@ func main() {
 	if err != nil {
 		log.Fatalf("Failed to load config: %v", err)
 	}
+
+	bootupCtx := context.Background()
+
+	shutdown, err := telemetry.Setup(bootupCtx, cfg)
+	if err != nil {
+		slog.Error("failed to setup telemetry", "error", err)
+		os.Exit(1)
+	}
+	defer func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+		if err := shutdown(ctx); err != nil {
+			slog.Error("failed to shutdown telemetry", "error", err)
+		}
+	}()
 
 	db, err := repository.NewDB(cfg)
 	if err != nil {
@@ -45,7 +62,6 @@ func main() {
 		Redis:   redisClient,
 	}
 
-	bootupCtx := context.Background()
 	handlers.SetupHandler(bootupCtx, app, apiService)
 
 	slog.InfoContext(bootupCtx, fmt.Sprintf("Server starting on port %s", cfg.ServerPort))

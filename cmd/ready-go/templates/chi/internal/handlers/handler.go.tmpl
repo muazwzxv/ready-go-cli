@@ -7,11 +7,13 @@ import (
 	"time"
 
 	"github.com/go-chi/chi/v5"
+	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	"{{.ModuleName}}/cmd"
 	"{{.ModuleName}}/internal/handlers/{{.SampleAPINameLower}}"
 )
 
 func SetupHandler(ctx context.Context, router chi.Router, svc *cmd.APIService) {
+	router.Use(otelhttp.NewMiddleware("{{.ProjectName}}"))
 	router.Use(LoggingMiddleware())
 
 	setup{{.SampleAPIName}}Handlers(ctx, router, svc)
@@ -33,7 +35,7 @@ func LoggingMiddleware() func(next http.Handler) http.Handler {
 			start := time.Now()
 			lrw := &loggingResponseWriter{ResponseWriter: w, statusCode: http.StatusOK}
 			next.ServeHTTP(lrw, r)
-			slog.Info("request",
+			slog.InfoContext(r.Context(), "request",
 				"method", r.Method,
 				"path", r.URL.Path,
 				"status", lrw.statusCode,
